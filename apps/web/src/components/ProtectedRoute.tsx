@@ -9,6 +9,9 @@ type ProtectedRouteProps = {
 export function ProtectedRoute({ roles }: ProtectedRouteProps) {
   const { profile, session, isLoading } = useAuth();
   const location = useLocation();
+  const bookingFlowConfirmed =
+    location.pathname === "/dashboard" &&
+    Boolean((location.state as { bookingFlowConfirmed?: boolean } | null)?.bookingFlowConfirmed);
 
   if (isLoading) {
     return (
@@ -20,8 +23,12 @@ export function ProtectedRoute({ roles }: ProtectedRouteProps) {
     );
   }
 
-  if (!session) {
+  if (!session && !bookingFlowConfirmed) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (bookingFlowConfirmed && roles?.includes("client")) {
+    return <Outlet />;
   }
 
   if (roles && !hasRole(profile, roles)) {
