@@ -22,7 +22,50 @@ Coach/Admin will be able to:
 - Upload resources such as videos, PDFs, images, and links.
 - Sync confirmed bookings with Google Calendar.
 
-## Recommended Stack
+## Monorepo
+
+```text
+apps/
+  web/      React + Vite + TypeScript + Tailwind CSS
+  api/      Node.js + Express + TypeScript
+supabase/
+  migrations/
+```
+
+## Getting Started
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy environment examples:
+
+```bash
+cp .env.example .env
+cp apps/web/.env.example apps/web/.env
+cp apps/api/.env.example apps/api/.env
+```
+
+3. Fill in Supabase values in each `.env` file.
+
+4. Apply the Supabase migration:
+
+```bash
+supabase db push
+```
+
+5. Run the apps:
+
+```bash
+npm run dev
+```
+
+The web app defaults to `http://localhost:5173`.
+The API defaults to `http://localhost:4000/api`.
+
+## Stack
 
 | Layer | Technology |
 | --- | --- |
@@ -32,9 +75,20 @@ Coach/Admin will be able to:
 | Database | Supabase Postgres |
 | Auth | Supabase Auth |
 | Storage | Supabase Storage |
-| Calendar | Google Calendar API |
+| Access Control | Supabase RLS + API role middleware |
+| Calendar | Google Calendar API, future integration |
 | Payments | Stripe, future phase |
 | Mobile | Capacitor, after web MVP |
+
+## Implemented Skeleton
+
+- npm workspace monorepo with `apps/web` and `apps/api`
+- Frontend routing for landing, booking, login, client dashboard, admin dashboard, and 404
+- Supabase browser client and auth context
+- Role-gated frontend routes for `client` and `admin`
+- Express API with health, auth, training type, availability, booking, and admin route modules
+- Supabase service-role API client and bearer-token authentication middleware
+- Initial PostgreSQL migration with app roles, booking tables, RLS policies, overlap protection, seed training types, and a private storage bucket
 
 ## MVP Scope
 
@@ -82,4 +136,4 @@ See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for the full architecture, schema outli
 
 ## Current Status
 
-Planning and project setup.
+Initial production-ready monorepo scaffold is in place.

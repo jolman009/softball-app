@@ -1,0 +1,24 @@
+{
+  "name": "softball-training-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo for a softball personal training scheduling platform.",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "npm run dev --workspace @softball/web",
+    "dev:api": "npm run dev --workspace @softball/api",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "npm run lint --workspaces"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
