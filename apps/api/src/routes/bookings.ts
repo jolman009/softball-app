@@ -6,6 +6,7 @@ import { supabaseAdmin } from "../lib/supabase.js";
 export const bookingsRouter = Router();
 
 const createBookingSchema = z.object({
+  coachId: z.string().uuid().optional(),
   trainingTypeId: z.string().uuid(),
   startsAt: z.string().datetime(),
   endsAt: z.string().datetime(),
@@ -47,10 +48,16 @@ bookingsRouter.post("/", authenticate, requireRole(["client", "admin"]), async (
       return res.status(409).json({ error: "Client profile is required before booking" });
     }
 
+    const coachId = body.coachId ?? (await findDefaultCoachId());
+    if (!coachId) {
+      return res.status(409).json({ error: "Coach profile is required before booking" });
+    }
+
     const { data, error } = await supabaseAdmin
       .from("bookings")
       .insert({
         client_id: client?.id ?? null,
+        coach_id: coachId,
         training_type_id: body.trainingTypeId,
         starts_at: body.startsAt,
         ends_at: body.endsAt,
@@ -58,7 +65,7 @@ bookingsRouter.post("/", authenticate, requireRole(["client", "admin"]), async (
         status: "pending",
         created_by: req.user!.id
       })
-      .select("id, client_id, training_type_id, starts_at, ends_at, status")
+      .select("id, client_id, coach_id, training_type_id, starts_at, ends_at, status")
       .single();
 
     if (error) throw error;
@@ -68,3 +75,16 @@ bookingsRouter.post("/", authenticate, requireRole(["client", "admin"]), async (
     next(error);
   }
 });
+
+async function findDefaultCoachId() {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("role", "admin")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.id ?? null;
+}
