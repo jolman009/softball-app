@@ -13,6 +13,7 @@ import {
   UserPlus,
   X
 } from "lucide-react";
+import { getRoleHomePath, useAuth } from "@/lib/auth";
 
 const trainingTypes = ["Batting", "Pitching", "Defense/Infield", "Defense/Outfield", "Other"] as const;
 
@@ -49,6 +50,7 @@ function getDateLabel(date: string) {
 
 export function BookingPage() {
   const navigate = useNavigate();
+  const { signIn, signUpClient } = useAuth();
   const [trainingType, setTrainingType] = useState<TrainingType | null>(null);
   const [otherTraining, setOtherTraining] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -56,9 +58,12 @@ export function BookingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("sign-in");
   const [authName, setAuthName] = useState("");
+  const [authAthleteName, setAuthAthleteName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [formMessage, setFormMessage] = useState<string | null>(null);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
 
   const selectedSlot = useMemo(
     () => mockSlots.find((slot) => slot.id === selectedSlotId) ?? null,
@@ -71,7 +76,7 @@ export function BookingPage() {
   const canConfirm =
     authEmail.trim().length > 0 &&
     authPassword.trim().length > 0 &&
-    (authMode === "sign-in" || authName.trim().length > 0);
+    (authMode === "sign-in" || (authName.trim().length > 0 && authAthleteName.trim().length > 0));
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,9 +90,37 @@ export function BookingPage() {
     setShowAuthModal(true);
   }
 
-  function handleConfirm() {
-    setShowAuthModal(false);
-    navigate("/dashboard", { state: { bookingFlowConfirmed: true } });
+  async function handleConfirm() {
+    setAuthMessage(null);
+    setIsAuthSubmitting(true);
+
+    try {
+      if (authMode === "create-account") {
+        const result = await signUpClient({
+          fullName: authName,
+          athleteName: authAthleteName,
+          email: authEmail,
+          password: authPassword
+        });
+
+        if (result.needsEmailConfirmation) {
+          setAuthMessage("Check your email to confirm the account, then sign in to finish booking.");
+          return;
+        }
+
+        setShowAuthModal(false);
+        navigate(getRoleHomePath(result.profile));
+        return;
+      }
+
+      const profile = await signIn({ email: authEmail, password: authPassword });
+      setShowAuthModal(false);
+      navigate(getRoleHomePath(profile));
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : "Unable to continue. Please try again.");
+    } finally {
+      setIsAuthSubmitting(false);
+    }
   }
 
   return (
@@ -325,7 +358,10 @@ export function BookingPage() {
                     "focus-ring rounded px-3 py-2 text-sm font-bold transition",
                     authMode === "sign-in" ? "bg-white text-ink shadow-sm" : "text-ink/64 hover:text-ink"
                   ].join(" ")}
-                  onClick={() => setAuthMode("sign-in")}
+                  onClick={() => {
+                    setAuthMode("sign-in");
+                    setAuthMessage(null);
+                  }}
                 >
                   Sign in
                 </button>
@@ -335,7 +371,10 @@ export function BookingPage() {
                     "focus-ring rounded px-3 py-2 text-sm font-bold transition",
                     authMode === "create-account" ? "bg-white text-ink shadow-sm" : "text-ink/64 hover:text-ink"
                   ].join(" ")}
-                  onClick={() => setAuthMode("create-account")}
+                  onClick={() => {
+                    setAuthMode("create-account");
+                    setAuthMessage(null);
+                  }}
                 >
                   Create account
                 </button>
@@ -352,19 +391,33 @@ export function BookingPage() {
 
               <div className="mt-5 grid gap-4">
                 {authMode === "create-account" ? (
-                  <div>
-                    <label className="block text-sm font-bold" htmlFor="full-name">
-                      Full name
-                    </label>
-                    <input
-                      id="full-name"
-                      className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
-                      type="text"
-                      value={authName}
-                      onChange={(event) => setAuthName(event.target.value)}
-                      placeholder="Athlete or parent name"
-                      required
-                    />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-bold" htmlFor="full-name">
+                        Parent or athlete name
+                      </label>
+                      <input
+                        id="full-name"
+                        className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                        type="text"
+                        value={authName}
+                        onChange={(event) => setAuthName(event.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold" htmlFor="athlete-name">
+                        Athlete name
+                      </label>
+                      <input
+                        id="athlete-name"
+                        className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                        type="text"
+                        value={authAthleteName}
+                        onChange={(event) => setAuthAthleteName(event.target.value)}
+                        required
+                      />
+                    </div>
                   </div>
                 ) : null}
                 <div>
@@ -378,7 +431,10 @@ export function BookingPage() {
                       className="focus-ring w-full rounded border border-ink/10 py-3 pl-10 pr-4"
                       type="email"
                       value={authEmail}
-                      onChange={(event) => setAuthEmail(event.target.value)}
+                      onChange={(event) => {
+                        setAuthEmail(event.target.value);
+                        setAuthMessage(null);
+                      }}
                       placeholder="you@example.com"
                       required
                     />
@@ -398,13 +454,22 @@ export function BookingPage() {
                       className="focus-ring w-full rounded border border-ink/10 py-3 pl-10 pr-4"
                       type="password"
                       value={authPassword}
-                      onChange={(event) => setAuthPassword(event.target.value)}
-                      placeholder="Mock password field"
+                      onChange={(event) => {
+                        setAuthPassword(event.target.value);
+                        setAuthMessage(null);
+                      }}
+                      minLength={6}
                       required
                     />
                   </div>
                 </div>
               </div>
+
+              {authMessage ? (
+                <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+                  {authMessage}
+                </p>
+              ) : null}
 
               <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <button
@@ -417,11 +482,11 @@ export function BookingPage() {
                 <button
                   type="button"
                   className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-field px-5 py-3 font-bold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-field/40"
-                  onClick={handleConfirm}
-                  disabled={!canConfirm}
+                  onClick={() => void handleConfirm()}
+                  disabled={!canConfirm || isAuthSubmitting}
                 >
                   {authMode === "create-account" ? <UserPlus size={18} /> : <CreditCard size={18} />}
-                  Confirm booking
+                  {isAuthSubmitting ? "Working..." : "Continue"}
                 </button>
               </div>
             </div>

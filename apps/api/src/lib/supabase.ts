@@ -7,6 +7,7 @@ export type AuthenticatedUser = {
   id: string;
   email?: string;
   role: AppRole;
+  emailConfirmedAt?: string | null;
 };
 
 export const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {

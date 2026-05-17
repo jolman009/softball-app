@@ -7,6 +7,7 @@ import { ClientDashboardPage } from "./pages/ClientDashboardPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 export function App() {
   return (
@@ -15,6 +16,7 @@ export function App() {
         <Route index element={<LandingPage />} />
         <Route path="booking" element={<BookingPage />} />
         <Route path="login" element={<LoginPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
         <Route element={<ProtectedRoute roles={["client", "admin"]} />}>
           <Route path="dashboard" element={<ClientDashboardPage />} />
         </Route>

@@ -9,9 +9,6 @@ type ProtectedRouteProps = {
 export function ProtectedRoute({ roles }: ProtectedRouteProps) {
   const { profile, session, isLoading } = useAuth();
   const location = useLocation();
-  const bookingFlowConfirmed =
-    location.pathname === "/dashboard" &&
-    Boolean((location.state as { bookingFlowConfirmed?: boolean } | null)?.bookingFlowConfirmed);
 
   if (isLoading) {
     return (
@@ -23,12 +20,21 @@ export function ProtectedRoute({ roles }: ProtectedRouteProps) {
     );
   }
 
-  if (!session && !bookingFlowConfirmed) {
+  if (!session) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (bookingFlowConfirmed && roles?.includes("client")) {
-    return <Outlet />;
+  if (!profile) {
+    return (
+      <main className="mx-auto max-w-6xl px-4 py-12">
+        <p className="text-sm font-bold uppercase tracking-[0.18em] text-clay">Profile required</p>
+        <h1 className="mt-3 text-3xl font-black">We could not load your app profile.</h1>
+        <p className="mt-3 max-w-2xl leading-7 text-ink/70">
+          Your Supabase session is active, but the matching app profile is missing. Try signing out and back in, or
+          ask an admin to verify your profile record.
+        </p>
+      </main>
+    );
   }
 
   if (roles && !hasRole(profile, roles)) {

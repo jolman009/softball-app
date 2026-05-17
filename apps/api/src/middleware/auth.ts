@@ -31,7 +31,8 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   req.user = {
     id: user.id,
     email: user.email,
-    role: profile.role as AppRole
+    role: profile.role as AppRole,
+    emailConfirmedAt: user.email_confirmed_at
   };
 
   return next();
