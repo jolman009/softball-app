@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   [
-    "rounded px-3 py-2 text-sm font-medium transition",
+    "rounded px-2 py-2 text-sm font-medium transition sm:px-3",
     isActive ? "bg-ink text-white" : "text-ink/70 hover:bg-white/70 hover:text-ink"
   ].join(" ");
 
@@ -14,11 +14,12 @@ export function AppLayout() {
   return (
     <div className="page-shell">
       <header className="border-b border-ink/10 bg-chalk/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Link to="/" className="text-lg font-black tracking-normal text-ink">
-            Softball Training
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-4">
+          <Link to="/" className="text-base font-black tracking-normal text-ink sm:text-lg">
+            <span className="sm:hidden">Softball</span>
+            <span className="hidden sm:inline">Softball Training</span>
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-0.5 sm:gap-1">
             <NavLink to="/booking" className={navLinkClass}>
               Book
             </NavLink>
@@ -29,10 +30,10 @@ export function AppLayout() {
               Admin
             </NavLink>
           </nav>
-          <div className="hidden items-center gap-2 sm:flex">
+          <div className="flex items-center gap-2">
             {profile ? (
               <>
-                <span className="inline-flex items-center gap-2 text-sm text-ink/70">
+                <span className="hidden items-center gap-2 text-sm text-ink/70 sm:inline-flex">
                   {profile.role === "admin" ? <Shield size={16} /> : <UserRound size={16} />}
                   {profile.email}
                 </span>
@@ -49,10 +50,11 @@ export function AppLayout() {
             ) : (
               <Link
                 to="/login"
-                className="focus-ring inline-flex items-center gap-2 rounded bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-clay"
+                className="focus-ring inline-flex items-center gap-2 rounded bg-ink px-3 py-2 text-sm font-semibold text-white transition hover:bg-clay sm:px-4"
+                aria-label="Sign in"
               >
                 <CalendarDays size={16} />
-                Sign in
+                <span className="hidden sm:inline">Sign in</span>
               </Link>
             )}
           </div>

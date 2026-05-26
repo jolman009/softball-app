@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
+import { AdminPlaceholderPage } from "./pages/AdminPlaceholderPage";
 import { BookingPage } from "./pages/BookingPage";
 import { ClientDashboardPage } from "./pages/ClientDashboardPage";
 import { LandingPage } from "./pages/LandingPage";
@@ -22,6 +23,36 @@ export function App() {
         </Route>
         <Route element={<ProtectedRoute roles={["admin"]} />}>
           <Route path="admin" element={<AdminDashboardPage />} />
+          <Route
+            path="admin/availability"
+            element={
+              <AdminPlaceholderPage
+                title="Availability settings"
+                phase="Phase 4"
+                description="Manage weekly availability windows, blocked dates, special openings, and booking rules (buffer, minimum notice, max window)."
+              />
+            }
+          />
+          <Route
+            path="admin/clients"
+            element={
+              <AdminPlaceholderPage
+                title="Clients"
+                phase="Phase 4"
+                description="Athlete profiles, booking history, session notes, and private coach notes."
+              />
+            }
+          />
+          <Route
+            path="admin/resources"
+            element={
+              <AdminPlaceholderPage
+                title="Resource library"
+                phase="Phase 4"
+                description="Upload and organize drills, videos, PDFs, and links shared with clients via Supabase Storage."
+              />
+            }
+          />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>

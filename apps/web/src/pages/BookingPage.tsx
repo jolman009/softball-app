@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -13,29 +13,29 @@ import {
   UserPlus,
   X
 } from "lucide-react";
+import { GoogleIcon } from "@/components/GoogleIcon";
 import { getRoleHomePath, useAuth } from "@/lib/auth";
+import {
+  ApiError,
+  confirmBooking,
+  createBooking,
+  fetchAvailability,
+  fetchTrainingTypes,
+  type AvailabilitySlot,
+  type TrainingType
+} from "@/lib/api";
 
-const trainingTypes = ["Batting", "Pitching", "Defense/Infield", "Defense/Outfield", "Other"] as const;
+const PENDING_BOOKING_KEY = "softball:pendingBooking";
 
-type TrainingType = (typeof trainingTypes)[number];
-type AuthMode = "sign-in" | "create-account";
-
-type Slot = {
-  id: string;
-  time: string;
-  coachNote: string;
+type PendingBooking = {
+  trainingTypeId: string;
+  startsAt: string;
+  endsAt: string;
+  otherTrainingText?: string;
 };
 
-const mockSlots: Slot[] = [
-  { id: "slot-1", time: "9:00 AM", coachNote: "Open cage and field reps" },
-  { id: "slot-2", time: "10:30 AM", coachNote: "Great for pitching work" },
-  { id: "slot-3", time: "4:00 PM", coachNote: "After school favorite" },
-  { id: "slot-4", time: "5:30 PM", coachNote: "Golden hour field time" },
-  { id: "slot-5", time: "7:00 PM", coachNote: "Lights available" }
-];
+type AuthMode = "sign-in" | "create-account";
 
-const hourlyRate = 30;
-const sessionHours = 1;
 const todayIso = new Date().toISOString().slice(0, 10);
 
 function getDateLabel(date: string) {
@@ -48,13 +48,51 @@ function getDateLabel(date: string) {
   }).format(new Date(`${date}T12:00:00`));
 }
 
+function formatSlotTime(iso: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(new Date(iso));
+}
+
+function startOfDayIso(date: string) {
+  return new Date(`${date}T00:00:00`).toISOString();
+}
+
+function endOfDayIso(date: string) {
+  return new Date(`${date}T23:59:59.999`).toISOString();
+}
+
+function slotId(slot: AvailabilitySlot) {
+  return `${slot.starts_at}__${slot.ends_at}`;
+}
+
+function computeSessionTotal(type: TrainingType | null) {
+  if (!type) return { hours: 1, rate: 30, total: 30 };
+  const hours = type.default_duration_minutes / 60;
+  const rate = Number(type.hourly_rate);
+  const total = Math.round(hours * rate * 100) / 100;
+  return { hours, rate, total };
+}
+
 export function BookingPage() {
   const navigate = useNavigate();
-  const { signIn, signUpClient } = useAuth();
-  const [trainingType, setTrainingType] = useState<TrainingType | null>(null);
+  const { profile, signIn, signInWithGoogle, signUpClient } = useAuth();
+
+  // Training types are loaded from the API; the seeded names match the original UI labels.
+  const [trainingTypes, setTrainingTypes] = useState<TrainingType[]>([]);
+  const [trainingTypesError, setTrainingTypesError] = useState<string | null>(null);
+  const [isLoadingTrainingTypes, setIsLoadingTrainingTypes] = useState(true);
+
+  const [trainingTypeId, setTrainingTypeId] = useState<string | null>(null);
   const [otherTraining, setOtherTraining] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+
+  const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null);
+
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>("sign-in");
   const [authName, setAuthName] = useState("");
@@ -65,14 +103,134 @@ export function BookingPage() {
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
 
-  const selectedSlot = useMemo(
-    () => mockSlots.find((slot) => slot.id === selectedSlotId) ?? null,
-    [selectedSlotId]
+  const [isResuming, setIsResuming] = useState(false);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  // StrictMode double-invokes effects in dev; this ref prevents a double-book.
+  const resumeStartedRef = useRef(false);
+
+  // Load training types on mount.
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchTrainingTypes()
+      .then((types) => {
+        if (!isMounted) return;
+        setTrainingTypes(types);
+      })
+      .catch((error: unknown) => {
+        if (!isMounted) return;
+        setTrainingTypesError(error instanceof Error ? error.message : "Unable to load training types.");
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingTrainingTypes(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // After a Google OAuth round-trip, the user comes back as /booking?resume=1 with a session.
+  // If we stashed a booking intent in sessionStorage before the redirect, finish the booking
+  // automatically and send them to their dashboard instead of making them re-select.
+  useEffect(() => {
+    if (!profile) return;
+    if (resumeStartedRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("resume") !== "1") return;
+
+    const raw = sessionStorage.getItem(PENDING_BOOKING_KEY);
+    if (!raw) {
+      navigate("/booking", { replace: true });
+      return;
+    }
+
+    let intent: PendingBooking;
+    try {
+      intent = JSON.parse(raw) as PendingBooking;
+    } catch {
+      sessionStorage.removeItem(PENDING_BOOKING_KEY);
+      navigate("/booking", { replace: true });
+      return;
+    }
+
+    sessionStorage.removeItem(PENDING_BOOKING_KEY);
+    resumeStartedRef.current = true;
+    setIsResuming(true);
+
+    (async () => {
+      try {
+        const hold = await createBooking({
+          trainingTypeId: intent.trainingTypeId,
+          startsAt: intent.startsAt,
+          endsAt: intent.endsAt,
+          otherTrainingText: intent.otherTrainingText
+        });
+        await confirmBooking(hold.id);
+        navigate(getRoleHomePath(profile), { replace: true });
+      } catch (err) {
+        setResumeError(formatAuthError(err));
+        navigate("/booking", { replace: true });
+      } finally {
+        setIsResuming(false);
+      }
+    })();
+  }, [profile, navigate]);
+
+  const selectedTrainingType = useMemo(
+    () => trainingTypes.find((type) => type.id === trainingTypeId) ?? null,
+    [trainingTypes, trainingTypeId]
   );
-  const isOtherMissing = trainingType === "Other" && otherTraining.trim().length === 0;
-  const trainingLabel = trainingType === "Other" ? otherTraining.trim() || "Other training" : trainingType;
-  const total = hourlyRate * sessionHours;
-  const canContinue = Boolean(trainingType && selectedDate && selectedSlot && !isOtherMissing);
+  const isOtherType = selectedTrainingType?.name === "Other";
+  const isOtherMissing = isOtherType && otherTraining.trim().length === 0;
+  const trainingLabel = isOtherType
+    ? otherTraining.trim() || "Other training"
+    : selectedTrainingType?.name ?? null;
+
+  // Reload availability whenever the date or training type changes. A request counter
+  // drops stale responses if the user clicks again before the previous load finishes.
+  const availabilityRequestId = useRef(0);
+  useEffect(() => {
+    if (!selectedDate || !trainingTypeId) {
+      setAvailableSlots([]);
+      setSelectedSlotKey(null);
+      setSlotsError(null);
+      setIsLoadingSlots(false);
+      return;
+    }
+
+    const requestId = ++availabilityRequestId.current;
+    setIsLoadingSlots(true);
+    setSlotsError(null);
+
+    fetchAvailability({
+      from: startOfDayIso(selectedDate),
+      to: endOfDayIso(selectedDate),
+      trainingTypeId
+    })
+      .then((slots) => {
+        if (requestId !== availabilityRequestId.current) return;
+        setAvailableSlots(slots);
+        setSelectedSlotKey(null);
+      })
+      .catch((error: unknown) => {
+        if (requestId !== availabilityRequestId.current) return;
+        setAvailableSlots([]);
+        setSlotsError(error instanceof Error ? error.message : "Unable to load available times.");
+      })
+      .finally(() => {
+        if (requestId === availabilityRequestId.current) setIsLoadingSlots(false);
+      });
+  }, [selectedDate, trainingTypeId]);
+
+  const selectedSlot = useMemo(
+    () => availableSlots.find((slot) => slotId(slot) === selectedSlotKey) ?? null,
+    [availableSlots, selectedSlotKey]
+  );
+
+  const { hours: sessionHours, rate: hourlyRate, total } = computeSessionTotal(selectedTrainingType);
+  const canContinue = Boolean(selectedTrainingType && selectedDate && selectedSlot && !isOtherMissing);
   const canConfirm =
     authEmail.trim().length > 0 &&
     authPassword.trim().length > 0 &&
@@ -91,6 +249,11 @@ export function BookingPage() {
   }
 
   async function handleConfirm() {
+    if (!selectedTrainingType || !selectedSlot) {
+      setAuthMessage("Choose a training type and time before confirming.");
+      return;
+    }
+
     setAuthMessage(null);
     setIsAuthSubmitting(true);
 
@@ -108,23 +271,80 @@ export function BookingPage() {
           return;
         }
 
+        await bookSelectedSlot();
         setShowAuthModal(false);
         navigate(getRoleHomePath(result.profile));
         return;
       }
 
       const profile = await signIn({ email: authEmail, password: authPassword });
+      await bookSelectedSlot();
       setShowAuthModal(false);
       navigate(getRoleHomePath(profile));
     } catch (error) {
-      setAuthMessage(error instanceof Error ? error.message : "Unable to continue. Please try again.");
+      setAuthMessage(formatAuthError(error));
     } finally {
       setIsAuthSubmitting(false);
     }
   }
 
+  async function handleGoogleConfirm() {
+    if (!selectedTrainingType || !selectedSlot) {
+      setAuthMessage("Choose a training type and time before confirming.");
+      return;
+    }
+
+    setAuthMessage(null);
+    setIsAuthSubmitting(true);
+
+    try {
+      const intent: PendingBooking = {
+        trainingTypeId: selectedTrainingType.id,
+        startsAt: selectedSlot.starts_at,
+        endsAt: selectedSlot.ends_at,
+        otherTrainingText: isOtherType ? otherTraining.trim() : undefined
+      };
+      sessionStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify(intent));
+      await signInWithGoogle({
+        redirectTo: `${window.location.origin}/booking?resume=1`
+      });
+      // The browser is about to navigate away; nothing else to do here.
+    } catch (error) {
+      sessionStorage.removeItem(PENDING_BOOKING_KEY);
+      setAuthMessage(formatAuthError(error));
+      setIsAuthSubmitting(false);
+    }
+  }
+
+  async function bookSelectedSlot() {
+    if (!selectedTrainingType || !selectedSlot) {
+      throw new Error("A training type and time are required.");
+    }
+
+    // Two-step reservation: a hold blocks the slot at the DB layer, then `confirm` flips it
+    // to `confirmed`. If the hold succeeds but confirm fails, the hold expires on its own
+    // within a few minutes.
+    const hold = await createBooking({
+      trainingTypeId: selectedTrainingType.id,
+      startsAt: selectedSlot.starts_at,
+      endsAt: selectedSlot.ends_at,
+      otherTrainingText: isOtherType ? otherTraining.trim() : undefined
+    });
+    await confirmBooking(hold.id);
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:py-12">
+      {isResuming ? (
+        <div className="mb-6 rounded border border-field/20 bg-field/5 px-4 py-3 text-sm font-semibold text-field">
+          Signing you in and finishing your booking…
+        </div>
+      ) : null}
+      {resumeError ? (
+        <div className="mb-6 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+          {resumeError}
+        </div>
+      ) : null}
       <div className="grid gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
         <section className="lg:sticky lg:top-24">
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-field">Booking</p>
@@ -143,7 +363,7 @@ export function BookingPage() {
               </div>
               <div>
                 <h2 className="font-black">Session rate</h2>
-                <p className="text-sm text-white/70">$30 per hour</p>
+                <p className="text-sm text-white/70">${hourlyRate} per hour</p>
               </div>
             </div>
             <dl className="mt-6 grid gap-3 text-sm">
@@ -157,7 +377,7 @@ export function BookingPage() {
               </div>
               <div className="flex items-center justify-between border-t border-white/12 pt-3">
                 <dt className="text-white/68">Time</dt>
-                <dd className="font-bold">{selectedSlot?.time ?? "Choose a time"}</dd>
+                <dd className="font-bold">{selectedSlot ? formatSlotTime(selectedSlot.starts_at) : "Choose a time"}</dd>
               </div>
               <div className="flex items-center justify-between border-t border-white/12 pt-3">
                 <dt className="text-white/68">Total</dt>
@@ -177,34 +397,44 @@ export function BookingPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {trainingTypes.map((type) => {
-                const isSelected = trainingType === type;
+            {isLoadingTrainingTypes ? (
+              <p className="mt-5 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
+                Loading training types…
+              </p>
+            ) : trainingTypesError ? (
+              <p className="mt-5 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+                {trainingTypesError}
+              </p>
+            ) : (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {trainingTypes.map((type) => {
+                  const isSelected = trainingTypeId === type.id;
 
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    className={[
-                      "focus-ring flex min-h-16 items-center justify-between rounded border px-4 py-3 text-left font-semibold transition",
-                      isSelected
-                        ? "border-field bg-field text-white"
-                        : "border-ink/10 bg-white hover:border-field hover:bg-field/5"
-                    ].join(" ")}
-                    onClick={() => {
-                      setTrainingType(type);
-                      setFormMessage(null);
-                    }}
-                    aria-pressed={isSelected}
-                  >
-                    <span>{type}</span>
-                    {isSelected ? <Check size={18} /> : null}
-                  </button>
-                );
-              })}
-            </div>
+                  return (
+                    <button
+                      key={type.id}
+                      type="button"
+                      className={[
+                        "focus-ring flex min-h-16 items-center justify-between rounded border px-4 py-3 text-left font-semibold transition",
+                        isSelected
+                          ? "border-field bg-field text-white"
+                          : "border-ink/10 bg-white hover:border-field hover:bg-field/5"
+                      ].join(" ")}
+                      onClick={() => {
+                        setTrainingTypeId(type.id);
+                        setFormMessage(null);
+                      }}
+                      aria-pressed={isSelected}
+                    >
+                      <span>{type.name}</span>
+                      {isSelected ? <Check size={18} /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-            {trainingType === "Other" ? (
+            {isOtherType ? (
               <div className="mt-4">
                 <label className="block text-sm font-bold" htmlFor="other-training">
                   Tell us what you want to work on
@@ -248,47 +478,60 @@ export function BookingPage() {
               min={todayIso}
               onChange={(event) => {
                 setSelectedDate(event.target.value);
-                setSelectedSlotId(null);
+                setSelectedSlotKey(null);
                 setFormMessage(null);
               }}
               required
             />
 
-            {selectedDate ? (
+            {!selectedDate || !trainingTypeId ? (
+              <div className="mt-5 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
+                Pick a training type and a date to see available times.
+              </div>
+            ) : isLoadingSlots ? (
+              <div className="mt-5 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
+                Looking up available times…
+              </div>
+            ) : slotsError ? (
+              <p className="mt-5 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+                {slotsError}
+              </p>
+            ) : availableSlots.length === 0 ? (
+              <div className="mt-5 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
+                No openings on this date. Try another day.
+              </div>
+            ) : (
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                {mockSlots.map((slot) => {
-                  const isSelected = selectedSlotId === slot.id;
+                {availableSlots.map((slot) => {
+                  const key = slotId(slot);
+                  const isSelected = selectedSlotKey === key;
 
                   return (
                     <button
-                      key={slot.id}
+                      key={key}
                       type="button"
                       className={[
-                        "focus-ring min-h-24 rounded border px-4 py-3 text-left transition",
+                        "focus-ring min-h-16 rounded border px-4 py-3 text-left transition",
                         isSelected
                           ? "border-clay bg-clay text-white"
                           : "border-ink/10 bg-white hover:border-clay hover:bg-clay/5"
                       ].join(" ")}
                       onClick={() => {
-                        setSelectedSlotId(slot.id);
+                        setSelectedSlotKey(key);
                         setFormMessage(null);
                       }}
                       aria-pressed={isSelected}
                     >
                       <span className="flex items-center justify-between gap-3">
-                        <span className="text-lg font-black">{slot.time}</span>
+                        <span className="text-lg font-black">{formatSlotTime(slot.starts_at)}</span>
                         {isSelected ? <Check size={18} /> : null}
                       </span>
-                      <span className={["mt-2 block text-sm", isSelected ? "text-white/78" : "text-ink/62"].join(" ")}>
-                        {slot.coachNote}
+                      <span className={["mt-1 block text-sm", isSelected ? "text-white/78" : "text-ink/62"].join(" ")}>
+                        Ends {formatSlotTime(slot.ends_at)}
                       </span>
                     </button>
                   );
                 })}
-              </div>
-            ) : (
-              <div className="mt-5 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
-                Select a lesson date to view available mock time slots.
               </div>
             )}
           </section>
@@ -298,7 +541,7 @@ export function BookingPage() {
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/45">Summary</p>
                 <p className="mt-1 font-black">
-                  {trainingLabel ?? "Training"} at {selectedSlot?.time ?? "a selected time"}
+                  {trainingLabel ?? "Training"} at {selectedSlot ? formatSlotTime(selectedSlot.starts_at) : "a selected time"}
                 </p>
                 <p className="mt-1 text-sm text-ink/65">
                   {getDateLabel(selectedDate)} for {sessionHours} hour at ${hourlyRate}/hour
@@ -325,7 +568,7 @@ export function BookingPage() {
       </div>
 
       {showAuthModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/55 px-4 py-6">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/55 px-4 py-6 sm:items-center">
           <div
             className="w-full max-w-lg rounded bg-white shadow-soft"
             role="dialog"
@@ -351,6 +594,21 @@ export function BookingPage() {
             </div>
 
             <div className="p-5">
+              <button
+                type="button"
+                onClick={() => void handleGoogleConfirm()}
+                disabled={!canContinue || isAuthSubmitting}
+                className="focus-ring inline-flex w-full items-center justify-center gap-3 rounded border border-ink/12 bg-white px-5 py-3 font-bold text-ink transition hover:bg-chalk disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <GoogleIcon />
+                Continue with Google
+              </button>
+              <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-ink/45">
+                <span className="h-px flex-1 bg-ink/10" />
+                or use email
+                <span className="h-px flex-1 bg-ink/10" />
+              </div>
+
               <div className="grid grid-cols-2 rounded bg-chalk p-1">
                 <button
                   type="button"
@@ -385,7 +643,7 @@ export function BookingPage() {
                   {trainingLabel} on {getDateLabel(selectedDate)}
                 </p>
                 <p className="mt-1 text-sm text-ink/65">
-                  {selectedSlot?.time} for {sessionHours} hour. Total: ${total}.
+                  {selectedSlot ? formatSlotTime(selectedSlot.starts_at) : ""} for {sessionHours} hour. Total: ${total}.
                 </p>
               </div>
 
@@ -495,4 +753,17 @@ export function BookingPage() {
       ) : null}
     </main>
   );
+}
+
+function formatAuthError(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.status === 409) {
+      return error.message ?? "This time is no longer available. Pick another slot.";
+    }
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Unable to continue. Please try again.";
 }

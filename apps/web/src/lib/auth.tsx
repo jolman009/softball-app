@@ -17,7 +17,13 @@ type AuthState = {
   isLoading: boolean;
   isEmailVerified: boolean;
   signIn: (input: SignInInput) => Promise<Profile | null>;
+  signInWithGoogle: (options?: { redirectTo?: string }) => Promise<void>;
   signUpClient: (input: ClientSignUpInput) => Promise<SignUpResult>;
+  /**
+   * Creates a profile-only account (no `clients` row). Use this for coach/staff signups.
+   * The resulting account still has role `client` until an existing admin promotes it.
+   */
+  signUpStaff: (input: StaffSignUpInput) => Promise<SignUpResult>;
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   refreshProfile: () => Promise<Profile | null>;
@@ -32,6 +38,12 @@ export type SignInInput = {
 export type ClientSignUpInput = {
   fullName: string;
   athleteName: string;
+  email: string;
+  password: string;
+};
+
+export type StaffSignUpInput = {
+  fullName: string;
   email: string;
   password: string;
 };
@@ -168,8 +180,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [loadProfile]
   );
 
-  const signUpClient = useCallback(
-    async ({ fullName, athleteName, email, password }: ClientSignUpInput) => {
+  const signInWithGoogle = useCallback(
+    async (options?: { redirectTo?: string }) => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: options?.redirectTo ?? `${window.location.origin}/dashboard`
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+    },
+    []
+  );
+
+  // Shared Supabase signup step. Creates the auth.users row (which fires the handle_new_user
+  // trigger and inserts a profiles row). Does NOT create a `clients` row — that's the
+  // caller's responsibility when the new user is an athlete or parent.
+  const signUpProfile = useCallback(
+    async ({ fullName, email, password }: StaffSignUpInput) => {
       const { firstName, lastName } = splitFullName(fullName);
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -189,16 +220,41 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       if (!data.session || !data.user) {
-        return { profile: null, needsEmailConfirmation: true };
+        return { profile: null, user: null, needsEmailConfirmation: true as const };
       }
 
       setSession(data.session);
       const nextProfile = await loadProfile(data.user.id);
-      await ensureClientRecord(data.user.id, athleteName.trim() || fullName.trim());
-
-      return { profile: nextProfile, needsEmailConfirmation: false };
+      return {
+        profile: nextProfile,
+        user: data.user,
+        needsEmailConfirmation: false as const
+      };
     },
     [loadProfile]
+  );
+
+  const signUpClient = useCallback(
+    async ({ fullName, athleteName, email, password }: ClientSignUpInput) => {
+      const result = await signUpProfile({ fullName, email, password });
+      if (result.needsEmailConfirmation || !result.user) {
+        return { profile: null, needsEmailConfirmation: true };
+      }
+      await ensureClientRecord(result.user.id, athleteName.trim() || fullName.trim());
+      return { profile: result.profile, needsEmailConfirmation: false };
+    },
+    [signUpProfile]
+  );
+
+  const signUpStaff = useCallback(
+    async ({ fullName, email, password }: StaffSignUpInput) => {
+      const result = await signUpProfile({ fullName, email, password });
+      return {
+        profile: result.profile,
+        needsEmailConfirmation: result.needsEmailConfirmation
+      };
+    },
+    [signUpProfile]
   );
 
   const requestPasswordReset = useCallback(async (email: string) => {
@@ -227,7 +283,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isLoading,
       isEmailVerified: Boolean(session?.user.email_confirmed_at),
       signIn,
+      signInWithGoogle,
       signUpClient,
+      signUpStaff,
       requestPasswordReset,
       updatePassword,
       refreshProfile,
@@ -235,7 +293,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
         await supabase.auth.signOut();
       }
     }),
-    [isLoading, profile, refreshProfile, requestPasswordReset, session, signIn, signUpClient, updatePassword]
+    [
+      isLoading,
+      profile,
+      refreshProfile,
+      requestPasswordReset,
+      session,
+      signIn,
+      signInWithGoogle,
+      signUpClient,
+      signUpStaff,
+      updatePassword
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

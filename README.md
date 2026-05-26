@@ -40,23 +40,22 @@ supabase/
 npm install
 ```
 
-2. Copy environment examples:
+2. Copy the per-app environment examples (the root `.env.example` is documentation only — nothing reads from a root `.env`):
 
 ```bash
-cp .env.example .env
 cp apps/web/.env.example apps/web/.env
 cp apps/api/.env.example apps/api/.env
 ```
 
-3. Fill in Supabase values in each `.env` file.
+3. Fill in Supabase values in each `.env` file. URL and anon key come from Supabase Dashboard → Project Settings → API; the service-role key is server-only and must never appear in `apps/web/.env`.
 
-4. Apply the Supabase migration:
+4. Apply the Supabase migrations:
 
 ```bash
 supabase db push
 ```
 
-5. Run the apps:
+5. Run both apps:
 
 ```bash
 npm run dev
@@ -80,28 +79,27 @@ The API defaults to `http://localhost:4000/api`.
 | Payments | Stripe, future phase |
 | Mobile | Capacitor, after web MVP |
 
-## Implemented Skeleton
+## What's Implemented
+
+Phase 2 is essentially feature-complete on the booking path — see [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) for the live checklist.
 
 - npm workspace monorepo with `apps/web` and `apps/api`
-- Frontend routing for landing, booking, login, client dashboard, admin dashboard, and 404
-- Supabase browser client and auth context
-- Role-gated frontend routes for `client` and `admin`
-- Express API with health, auth, training type, availability, booking, and admin route modules
-- Supabase service-role API client and bearer-token authentication middleware
-- Initial PostgreSQL migration with app roles, booking tables, RLS policies, overlap protection, seed training types, and a private storage bucket
+- Public landing, booking, login, reset-password, and 404 pages
+- Role-gated routing for `client` and `admin` dashboards
+- Supabase Auth (email/password, password reset) with profile lookup
+- Booking flow wired to real availability — training types, slots, holds, confirm — no mock data
+- Availability engine v1: expands `availability_windows`, subtracts overlapping bookings, honors `availability_exceptions`, applies buffer/min-notice/max-window rules
+- Two-step `hold → confirm` booking with DB-level race protection (gist exclusion + lazy `expire_stale_holds()` sweep)
+- Client dashboard with real upcoming/past sessions and email-verification banner
+- Admin dashboard with today's schedule, week/month/revenue metrics, and Phase 4 quick-link placeholders
+- Mobile-responsive pass at 375 px on landing, booking, dashboards, login, reset-password, 404
 
-## MVP Scope
+## What's Next (Phase 2.6 finishers + Phase 3)
 
-- Public landing page and training overview
-- Booking flow with real availability
-- Email/password and Google sign-in
-- Client dashboard
-- Admin dashboard
-- Availability management
-- Google Calendar free/busy sync and event creation
-- Resource library
-- Email booking confirmations
-- Role-based access control
+- Google sign-in via Supabase OAuth
+- Google Calendar OAuth + FreeBusy + event sync (Phase 3)
+- Admin tools: availability CRUD, clients, session notes, resource library (Phase 4)
+- Client video uploads & coach review (Phase 4.5)
 
 ## Booking Engine Principles
 
@@ -117,23 +115,5 @@ Booking confirmation should recheck both the database and Google Calendar before
 
 ## Project Plan
 
-See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for the full architecture, schema outline, API plan, roadmap, UI screens, and implementation prompts.
-
-## Recommended Build Order
-
-1. Finalize business rules and policies
-2. Create the database schema
-3. Build auth and user roles
-4. Build the booking flow UI
-5. Implement the availability engine
-6. Add Google Calendar integration
-7. Build the admin dashboard
-8. Add the resource library
-9. Add email notifications
-10. Harden for production
-11. Package mobile apps with Capacitor
-12. Add payments and advanced growth features
-
-## Current Status
-
-Initial production-ready monorepo scaffold is in place.
+- [PROJECT_PLAN.md](./PROJECT_PLAN.md) — long-range product vision, schema outline, API plan, full roadmap, UI screens.
+- [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) — live actionable checklist with target dates and current status.

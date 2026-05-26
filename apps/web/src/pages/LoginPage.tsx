@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { KeyRound, LogIn, Mail, RotateCcw, UserPlus } from "lucide-react";
+import { GoogleIcon } from "@/components/GoogleIcon";
 import { getRoleHomePath, useAuth } from "@/lib/auth";
 
 type AuthMode = "sign-in" | "create-account" | "reset-password";
+type AccountType = "athlete" | "staff";
 
 function getReturnPath(locationState: unknown) {
   const from = (locationState as { from?: { pathname?: string; search?: string } } | null)?.from;
@@ -18,8 +20,9 @@ function getReturnPath(locationState: unknown) {
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile, signIn, signUpClient, requestPasswordReset, isLoading } = useAuth();
+  const { profile, signIn, signInWithGoogle, signUpClient, signUpStaff, requestPasswordReset, isLoading } = useAuth();
   const [mode, setMode] = useState<AuthMode>("sign-in");
+  const [accountType, setAccountType] = useState<AccountType>("athlete");
   const [fullName, setFullName] = useState("");
   const [athleteName, setAthleteName] = useState("");
   const [email, setEmail] = useState("");
@@ -47,12 +50,10 @@ export function LoginPage() {
       }
 
       if (mode === "create-account") {
-        const result = await signUpClient({
-          fullName,
-          athleteName,
-          email,
-          password
-        });
+        const result =
+          accountType === "athlete"
+            ? await signUpClient({ fullName, athleteName, email, password })
+            : await signUpStaff({ fullName, email, password });
 
         if (result.needsEmailConfirmation) {
           setMessage("Check your email to confirm the account, then sign in.");
@@ -68,6 +69,21 @@ export function LoginPage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Something went wrong. Please try again.");
     } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setMessage(null);
+    setIsSubmitting(true);
+    try {
+      // After Google returns the user to /dashboard, ProtectedRoute will redirect admins
+      // to /admin if needed. We don't have the profile until after the OAuth round-trip.
+      await signInWithGoogle({
+        redirectTo: `${window.location.origin}${returnPath ?? "/dashboard"}`
+      });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to start Google sign-in.");
       setIsSubmitting(false);
     }
   }
@@ -118,36 +134,97 @@ export function LoginPage() {
           ))}
         </div>
 
-        <form className="mt-6" onSubmit={handleSubmit}>
-          {mode === "create-account" ? (
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-bold" htmlFor="full-name">
-                  Parent or athlete name
-                </label>
-                <input
-                  id="full-name"
-                  className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
-                  type="text"
-                  value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold" htmlFor="athlete-name">
-                  Athlete name
-                </label>
-                <input
-                  id="athlete-name"
-                  className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
-                  type="text"
-                  value={athleteName}
-                  onChange={(event) => setAthleteName(event.target.value)}
-                  required
-                />
-              </div>
+        {mode !== "reset-password" ? (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => void handleGoogleSignIn()}
+              disabled={isSubmitting}
+              className="focus-ring inline-flex w-full items-center justify-center gap-3 rounded border border-ink/12 bg-white px-5 py-3 font-bold text-ink transition hover:bg-chalk disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <GoogleIcon />
+              Continue with Google
+            </button>
+            <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-ink/45">
+              <span className="h-px flex-1 bg-ink/10" />
+              or use email
+              <span className="h-px flex-1 bg-ink/10" />
             </div>
+          </div>
+        ) : null}
+
+        <form className={mode === "reset-password" ? "mt-6" : ""} onSubmit={handleSubmit}>
+          {mode === "create-account" ? (
+            <>
+              <p className="text-sm font-bold uppercase tracking-[0.14em] text-ink/55">Account type</p>
+              <div className="mt-2 grid grid-cols-2 rounded bg-chalk p-1">
+                {[
+                  { id: "athlete" as AccountType, label: "Athlete or parent" },
+                  { id: "staff" as AccountType, label: "Coach or staff" }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={[
+                      "focus-ring rounded px-3 py-2 text-sm font-bold transition",
+                      accountType === item.id
+                        ? "bg-white text-ink shadow-sm"
+                        : "text-ink/64 hover:text-ink"
+                    ].join(" ")}
+                    onClick={() => {
+                      setAccountType(item.id);
+                      setMessage(null);
+                    }}
+                    aria-pressed={accountType === item.id}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {accountType === "staff" ? (
+                <p className="mt-3 rounded border border-ink/10 bg-chalk px-3 py-2 text-xs leading-5 text-ink/65">
+                  Coach and staff accounts are created as standard accounts. Admin access is
+                  granted by an existing admin after sign-up.
+                </p>
+              ) : null}
+
+              <div
+                className={[
+                  "mt-5 grid gap-5",
+                  accountType === "athlete" ? "sm:grid-cols-2" : ""
+                ].join(" ")}
+              >
+                <div>
+                  <label className="block text-sm font-bold" htmlFor="full-name">
+                    {accountType === "athlete" ? "Parent or athlete name" : "Your full name"}
+                  </label>
+                  <input
+                    id="full-name"
+                    className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                    type="text"
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                    required
+                  />
+                </div>
+                {accountType === "athlete" ? (
+                  <div>
+                    <label className="block text-sm font-bold" htmlFor="athlete-name">
+                      Athlete name
+                    </label>
+                    <input
+                      id="athlete-name"
+                      className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                      type="text"
+                      value={athleteName}
+                      onChange={(event) => setAthleteName(event.target.value)}
+                      required
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </>
           ) : null}
 
           <label className={["block text-sm font-bold", mode === "create-account" ? "mt-5" : ""].join(" ")} htmlFor="email">
