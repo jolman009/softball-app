@@ -2,8 +2,8 @@
 
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
-> **Last updated:** 2026-05-25 (Phase 2 complete and validated end-to-end — Google OAuth confirmed working; moved into Completed. Phase 3 is now current.)
-> **Current phase:** Phase 3 — Calendar Engine
+> **Last updated:** 2026-05-27 (Phase 3.2 FreeBusy landed + verified — a Google Calendar block hides matching slots in `/api/availability`.)
+> **Current phase:** Phase 3.3 — Event sync on confirm/cancel/reschedule
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -23,7 +23,7 @@
 | Client dashboard | ✅ Done | Real upcoming/past from `/api/me/bookings` (Phase 2.4) |
 | Admin dashboard | ✅ Done | Today's schedule + week/month/revenue metrics + Phase 4 quick links (Phase 2.5) |
 | Google sign-in | ✅ Done | Wired into LoginPage + BookingPage modal; OAuth resume on booking flow (Phase 2.6) |
-| Google Calendar integration | 🔴 Not started | Phase 3 |
+| Google Calendar integration | 🟡 Partial | OAuth (3.1) ✅ + FreeBusy in availability engine (3.2) ✅ smoke-tested 2026-05-27; event sync (3.3) pending |
 | Resource library (coach → client) | 🔴 Not started | Tables exist, no UI · Phase 4 |
 | Client video uploads & review (client → coach) | 🔴 Not started | Phase 4.5 |
 | Email confirmations | 🔴 Not started | |
@@ -39,16 +39,31 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 **Target window:** 2026-07-07 → 2026-08-10 (≈ 5 weeks)
 **Goal:** Coach's Google Calendar is the second source of truth for "busy"; confirmed bookings create calendar events; reschedules/cancellations propagate.
 
-- [ ] OAuth flow: `GET /api/calendar/connect/google` → `GET /api/calendar/google/callback`. Store refresh token in `calendar_connections.refresh_token_encrypted` (use a server-side encryption key from env).
-- [ ] `GET /api/calendar/status` (connected / disconnected / token expiring).
-- [ ] `POST /api/calendar/disconnect` clears the row.
-- [ ] Service `googleCalendar.service.ts` with: `getFreeBusy(coachId, from, to)`, `createEvent(booking)`, `updateEvent(booking)`, `deleteEvent(booking)`.
-- [ ] Availability engine subtracts FreeBusy results in addition to DB bookings.
-- [ ] On `confirm`, create the calendar event and persist `bookings.google_calendar_event_id`.
-- [ ] On cancel / reschedule, update or delete the event.
-- [ ] Admin dashboard widget: connection status + reconnect button.
+### 3.1 OAuth plumbing + connection UI — *target 2026-07-14*
 
-**Exit criteria:** A "busy" block placed directly on the coach's Google Calendar disappears from the public slot list within one refresh.
+- [x] OAuth flow: `GET /api/calendar/connect/google` (returns `{ authUrl }`) → `GET /api/calendar/google/callback`. Refresh token stored in `calendar_connections.refresh_token_encrypted` (AES-256-GCM via `ENCRYPTION_KEY`).
+- [x] `GET /api/calendar/status` (connected / disconnected / `tokenExpiringSoon`).
+- [x] `POST /api/calendar/disconnect` flips `active` to false (soft disconnect, audit-friendly).
+- [x] Admin dashboard widget: connection status + Connect/Reconnect/Disconnect.
+- [x] HMAC-signed state nonce (10-min TTL) so an attacker can't swap coach IDs in the callback.
+
+**Done when:** Coach clicks "Connect Google" on the admin dashboard, completes OAuth, returns to a "Connected" card. ✅ *(Smoke-tested end-to-end 2026-05-27 against `jolman009@gmail.com`. `calendar_connections` row stored with `active = true` and encrypted refresh token.)*
+
+### 3.2 FreeBusy in availability engine — *target 2026-07-28*
+
+- [x] Service `googleCalendar.service.ts` with `refreshAccessToken(connection)` + `getFreeBusy(coachId, from, to)`.
+- [x] Availability engine subtracts FreeBusy results in addition to DB bookings.
+- [x] Cache FreeBusy briefly (~30 s) to avoid rate-limiting on slot scans.
+
+**Done when:** A "busy" block placed directly on the coach's Google Calendar disappears from `/api/availability` within one refresh. ✅ *(Verified 2026-05-27 against `jolman009@gmail.com`. No buffer applied to FreeBusy holes — the calendar is treated as literal "do not book." Failures degrade silently to DB-only.)*
+
+### 3.3 Event sync on confirm/cancel/reschedule — *target 2026-08-10*
+
+- [ ] `googleCalendar.service.ts`: `createEvent(booking)`, `updateEvent(booking)`, `deleteEvent(booking)`.
+- [ ] On `POST /bookings/:id/confirm`, create the event and persist `bookings.google_calendar_event_id`.
+- [ ] On cancel / reschedule (Phase 4.3 wires the actions), update or delete the event.
+
+**Phase 3 exit criteria:** A "busy" block placed directly on the coach's Google Calendar disappears from the public slot list within one refresh, and a confirmed booking shows up on the coach's calendar.
 
 ---
 

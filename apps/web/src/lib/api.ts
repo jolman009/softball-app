@@ -210,3 +210,33 @@ export async function fetchAdminBookings(range: { from: string; to: string }): P
   const data = await apiFetch<AdminBookingsResponse>(`/admin/bookings?${params.toString()}`, { auth: true });
   return data.bookings;
 }
+
+export type CalendarStatus =
+  | { connected: false }
+  | {
+      connected: true;
+      calendarName: string | null;
+      connectedAt: string;
+      lastSyncedAt: string | null;
+      tokenExpiringSoon: boolean;
+    };
+
+/** Returns the signed-in coach's Google Calendar connection status. Admin-only. */
+export async function fetchCalendarStatus(): Promise<CalendarStatus> {
+  return apiFetch<CalendarStatus>("/calendar/status", { auth: true });
+}
+
+/**
+ * Starts the Google Calendar OAuth flow. The API returns the Google auth URL
+ * (we can't just `<a href>` to the API endpoint because the API needs the
+ * bearer token to identify the coach). Caller does the actual navigation.
+ */
+export async function startCalendarConnect(): Promise<string> {
+  const data = await apiFetch<{ authUrl: string }>("/calendar/connect/google", { auth: true });
+  return data.authUrl;
+}
+
+/** Soft-disconnects (flips `active` to false). Admin-only. */
+export async function disconnectCalendar(): Promise<void> {
+  await apiFetch<void>("/calendar/disconnect", { method: "POST", auth: true });
+}

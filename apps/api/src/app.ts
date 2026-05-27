@@ -7,6 +7,7 @@ import { adminRouter } from "./routes/admin.js";
 import { authRouter } from "./routes/auth.js";
 import { availabilityRouter } from "./routes/availability.js";
 import { bookingsRouter } from "./routes/bookings.js";
+import { calendarRouter } from "./routes/calendar.js";
 import { healthRouter } from "./routes/health.js";
 import { meRouter } from "./routes/me.js";
 import { trainingTypesRouter } from "./routes/trainingTypes.js";
@@ -30,6 +31,7 @@ export function createApp() {
   app.use("/api/training-types", trainingTypesRouter);
   app.use("/api/availability", availabilityRouter);
   app.use("/api/bookings", bookingsRouter);
+  app.use("/api/calendar", calendarRouter);
   app.use("/api/me", meRouter);
   app.use("/api/admin", adminRouter);
 

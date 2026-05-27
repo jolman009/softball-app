@@ -1,13 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   CalendarClock,
   CalendarRange,
+  CalendarX,
+  CheckCircle2,
   DollarSign,
+  Link2,
   UsersRound,
   Video
 } from "lucide-react";
-import { fetchAdminBookings, type AdminBookingRow, type BookingStatus } from "@/lib/api";
+import {
+  ApiError,
+  disconnectCalendar,
+  fetchAdminBookings,
+  fetchCalendarStatus,
+  startCalendarConnect,
+  type AdminBookingRow,
+  type BookingStatus,
+  type CalendarStatus
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
 // --- date helpers (all in local TZ; the coach reads in their own time) ---
@@ -109,6 +121,13 @@ export function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [calendarStatus, setCalendarStatus] = useState<CalendarStatus | null>(null);
+  const [isCalendarLoading, setIsCalendarLoading] = useState(true);
+  const [isCalendarWorking, setIsCalendarWorking] = useState(false);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [calendarNotice, setCalendarNotice] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
   useEffect(() => {
     let isMounted = true;
 
@@ -134,6 +153,77 @@ export function AdminDashboardPage() {
       isMounted = false;
     };
   }, [ranges]);
+
+  const loadCalendarStatus = useCallback(async () => {
+    setIsCalendarLoading(true);
+    setCalendarError(null);
+    try {
+      const status = await fetchCalendarStatus();
+      setCalendarStatus(status);
+    } catch (err) {
+      setCalendarError(err instanceof Error ? err.message : "Unable to load calendar status.");
+    } finally {
+      setIsCalendarLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCalendarStatus();
+  }, [loadCalendarStatus]);
+
+  // Consume the ?calendar=connected|error param that the OAuth callback redirects with,
+  // turn it into an inline banner, then strip it from the URL so refresh doesn't repeat.
+  useEffect(() => {
+    const status = searchParams.get("calendar");
+    if (!status) return;
+
+    if (status === "connected") {
+      setCalendarNotice("Google Calendar connected.");
+      void loadCalendarStatus();
+    } else if (status === "error") {
+      const reason = searchParams.get("reason");
+      setCalendarError(
+        reason
+          ? `Couldn't finish Google Calendar setup (${reason}). Try connecting again.`
+          : "Couldn't finish Google Calendar setup. Try connecting again."
+      );
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("calendar");
+    next.delete("reason");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, loadCalendarStatus]);
+
+  async function handleCalendarConnect() {
+    setCalendarError(null);
+    setCalendarNotice(null);
+    setIsCalendarWorking(true);
+    try {
+      const authUrl = await startCalendarConnect();
+      // Hand off to Google — the OAuth callback redirects back to /admin
+      // with a ?calendar=connected param that this page will pick up.
+      window.location.href = authUrl;
+    } catch (err) {
+      setCalendarError(formatCalendarError(err));
+      setIsCalendarWorking(false);
+    }
+  }
+
+  async function handleCalendarDisconnect() {
+    setCalendarError(null);
+    setCalendarNotice(null);
+    setIsCalendarWorking(true);
+    try {
+      await disconnectCalendar();
+      setCalendarStatus({ connected: false });
+      setCalendarNotice("Google Calendar disconnected.");
+    } catch (err) {
+      setCalendarError(formatCalendarError(err));
+    } finally {
+      setIsCalendarWorking(false);
+    }
+  }
 
   // --- derived: today / this week / this month + revenue ---
   const todaysBookings = useMemo(
@@ -218,6 +308,19 @@ export function AdminDashboardPage() {
           value={isLoading ? "…" : formatCurrency(revenueEstimate)}
           sub="confirmed + completed this month"
           accent="text-clay"
+        />
+      </section>
+
+      {/* Google Calendar connection */}
+      <section className="mt-10">
+        <CalendarConnectionCard
+          status={calendarStatus}
+          isLoading={isCalendarLoading}
+          isWorking={isCalendarWorking}
+          error={calendarError}
+          notice={calendarNotice}
+          onConnect={() => void handleCalendarConnect()}
+          onDisconnect={() => void handleCalendarDisconnect()}
         />
       </section>
 
@@ -332,6 +435,116 @@ function ScheduleRow({ booking }: { booking: AdminBookingRow }) {
       </span>
     </li>
   );
+}
+
+type CalendarCardProps = {
+  status: CalendarStatus | null;
+  isLoading: boolean;
+  isWorking: boolean;
+  error: string | null;
+  notice: string | null;
+  onConnect: () => void;
+  onDisconnect: () => void;
+};
+
+function CalendarConnectionCard({
+  status,
+  isLoading,
+  isWorking,
+  error,
+  notice,
+  onConnect,
+  onDisconnect
+}: CalendarCardProps) {
+  const connected = status?.connected === true;
+  const expiring = connected && status.tokenExpiringSoon;
+  const calendarName = connected ? status.calendarName : null;
+
+  return (
+    <div className="rounded bg-white p-5 shadow-soft">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div
+            className={[
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded",
+              connected ? "bg-field/10 text-field" : "bg-chalk text-ink/55"
+            ].join(" ")}
+          >
+            {connected ? <CheckCircle2 size={22} /> : <Link2 size={22} />}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/45">
+              Google Calendar
+            </p>
+            <h3 className="mt-1 text-lg font-black">
+              {isLoading ? "Checking status…" : connected ? "Connected" : "Not connected"}
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-ink/65">
+              {connected
+                ? `Reading busy times${calendarName ? ` from "${calendarName}"` : ""} and (Phase 3.3) writing confirmed bookings as events.`
+                : "Connect your Google Calendar so its busy blocks hide matching booking slots from clients."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          {connected ? (
+            <>
+              <button
+                type="button"
+                onClick={onConnect}
+                disabled={isWorking}
+                className="focus-ring inline-flex items-center justify-center gap-2 rounded border border-ink/12 px-4 py-2 text-sm font-bold text-ink transition hover:bg-chalk disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Reconnect
+              </button>
+              <button
+                type="button"
+                onClick={onDisconnect}
+                disabled={isWorking}
+                className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-clay disabled:cursor-not-allowed disabled:bg-ink/40"
+              >
+                <CalendarX size={16} />
+                Disconnect
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onConnect}
+              disabled={isLoading || isWorking}
+              className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-field/40"
+            >
+              <Link2 size={16} />
+              {isWorking ? "Working…" : "Connect Google"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {expiring ? (
+        <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+          The access token expires shortly. Bookings still work — reconnect if you start seeing sync errors.
+        </p>
+      ) : null}
+      {notice ? (
+        <p className="mt-4 rounded border border-field/20 bg-field/5 px-4 py-2 text-sm font-semibold text-field">
+          {notice}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function formatCalendarError(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) return error.message;
+  return "Something went wrong with Google Calendar.";
 }
 
 function QuickAction({
