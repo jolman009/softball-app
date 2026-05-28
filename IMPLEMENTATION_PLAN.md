@@ -2,8 +2,8 @@
 
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
-> **Last updated:** 2026-05-27 (Phase 3.2 FreeBusy landed + verified — a Google Calendar block hides matching slots in `/api/availability`.)
-> **Current phase:** Phase 3.3 — Event sync on confirm/cancel/reschedule
+> **Last updated:** 2026-05-28 (Phase 3.3 create-on-confirm landed — confirmed bookings now mirror onto the coach's Google Calendar; update/delete service plumbing is ready but wired in Phase 4.3.)
+> **Current phase:** Phase 3.3 — Event sync on confirm/cancel/reschedule (create wired; update/delete pending until Phase 4.3 actions exist)
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -23,7 +23,7 @@
 | Client dashboard | ✅ Done | Real upcoming/past from `/api/me/bookings` (Phase 2.4) |
 | Admin dashboard | ✅ Done | Today's schedule + week/month/revenue metrics + Phase 4 quick links (Phase 2.5) |
 | Google sign-in | ✅ Done | Wired into LoginPage + BookingPage modal; OAuth resume on booking flow (Phase 2.6) |
-| Google Calendar integration | 🟡 Partial | OAuth (3.1) ✅ + FreeBusy in availability engine (3.2) ✅ smoke-tested 2026-05-27; event sync (3.3) pending |
+| Google Calendar integration | 🟡 Partial | OAuth (3.1) ✅ + FreeBusy (3.2) ✅ + create-event-on-confirm (3.3 partial) ✅ — update/delete service ready, wired in Phase 4.3 |
 | Resource library (coach → client) | 🔴 Not started | Tables exist, no UI · Phase 4 |
 | Client video uploads & review (client → coach) | 🔴 Not started | Phase 4.5 |
 | Email confirmations | 🔴 Not started | |
@@ -59,8 +59,8 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 
 ### 3.3 Event sync on confirm/cancel/reschedule — *target 2026-08-10*
 
-- [ ] `googleCalendar.service.ts`: `createEvent(booking)`, `updateEvent(booking)`, `deleteEvent(booking)`.
-- [ ] On `POST /bookings/:id/confirm`, create the event and persist `bookings.google_calendar_event_id`.
+- [x] `googleCalendar.service.ts`: `createEvent(booking)`, `updateEvent(booking)`, `deleteEvent(booking)`. *(All three exported; share a `withAccessToken` helper that degrades to `null`/`false` on any error so a Google outage never rolls back a booking. Each successful call touches `calendar_connections.last_synced_at`.)*
+- [x] On `POST /bookings/:id/confirm`, create the event and persist `bookings.google_calendar_event_id`. *(Event title is `"{TrainingType} with {AthleteName}"` (falls back to `"{TrainingType} session"` for admin walk-ins; appends `other_training_text` for the `Other` type). Description carries the booking's notes. Calendar failure is logged + swallowed; the booking is still confirmed.)*
 - [ ] On cancel / reschedule (Phase 4.3 wires the actions), update or delete the event.
 
 **Phase 3 exit criteria:** A "busy" block placed directly on the coach's Google Calendar disappears from the public slot list within one refresh, and a confirmed booking shows up on the coach's calendar.

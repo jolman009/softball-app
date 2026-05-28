@@ -4,6 +4,7 @@ import { supabaseAdmin } from "../lib/supabase.js";
 
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const FREEBUSY_ENDPOINT = "https://www.googleapis.com/calendar/v3/freeBusy";
+const EVENTS_ENDPOINT = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
 // Refresh a hair before Google's stated expiry so a concurrent request doesn't
 // race the expiration boundary.
@@ -29,6 +30,14 @@ type FreeBusyInterval = {
 
 type FreeBusyResponse = {
   calendars?: Record<string, { busy?: Array<{ start: string; end: string }> }>;
+};
+
+export type BookingEventInput = {
+  coachId: string;
+  startsAt: string;
+  endsAt: string;
+  summary: string;
+  description?: string | null;
 };
 
 const freeBusyCache = new Map<string, { expires: number; intervals: FreeBusyInterval[] }>();
@@ -189,4 +198,139 @@ export async function refreshAccessToken(
   }
 
   return tokens.access_token;
+}
+
+/**
+ * Creates a Calendar event for a confirmed booking on the coach's primary
+ * calendar. Returns `null` if the coach hasn't connected, the connection is
+ * inactive, or any step of the call fails — booking confirmation must not
+ * roll back if Google is having a bad day.
+ */
+export async function createEvent(
+  booking: BookingEventInput
+): Promise<{ eventId: string } | null> {
+  return withAccessToken(booking.coachId, async (accessToken) => {
+    const response = await fetch(EVENTS_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(buildEventBody(booking))
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      console.warn(`Calendar createEvent failed (${response.status}): ${detail}`);
+      return null;
+    }
+
+    const data = (await response.json()) as { id?: string };
+    if (!data.id) return null;
+
+    await touchLastSyncedAt(booking.coachId);
+    return { eventId: data.id };
+  });
+}
+
+/**
+ * Updates an existing Calendar event with new times / summary / description.
+ * Used by Phase 4.3's reschedule flow. Returns `null` on any failure; callers
+ * should treat that as "DB still authoritative, calendar drifted."
+ */
+export async function updateEvent(
+  booking: BookingEventInput & { eventId: string }
+): Promise<{ eventId: string } | null> {
+  return withAccessToken(booking.coachId, async (accessToken) => {
+    const response = await fetch(
+      `${EVENTS_ENDPOINT}/${encodeURIComponent(booking.eventId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(buildEventBody(booking))
+      }
+    );
+
+    if (!response.ok) {
+      const detail = await response.text();
+      console.warn(`Calendar updateEvent failed (${response.status}): ${detail}`);
+      return null;
+    }
+
+    await touchLastSyncedAt(booking.coachId);
+    return { eventId: booking.eventId };
+  });
+}
+
+/**
+ * Removes a Calendar event. Used by Phase 4.3's cancel flow. A 410 from
+ * Google (event already gone) is treated as success — the desired end state
+ * is reached either way.
+ */
+export async function deleteEvent(input: {
+  coachId: string;
+  eventId: string;
+}): Promise<boolean> {
+  const result = await withAccessToken(input.coachId, async (accessToken) => {
+    const response = await fetch(
+      `${EVENTS_ENDPOINT}/${encodeURIComponent(input.eventId)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }
+    );
+
+    if (!response.ok && response.status !== 410) {
+      const detail = await response.text();
+      console.warn(`Calendar deleteEvent failed (${response.status}): ${detail}`);
+      return false;
+    }
+
+    await touchLastSyncedAt(input.coachId);
+    return true;
+  });
+  return result ?? false;
+}
+
+function buildEventBody(input: BookingEventInput) {
+  return {
+    summary: input.summary,
+    description: input.description ?? undefined,
+    // ISO strings with a `Z` offset are valid RFC3339 for the Calendar API;
+    // Google renders the event in each viewer's own timezone.
+    start: { dateTime: input.startsAt },
+    end: { dateTime: input.endsAt }
+  };
+}
+
+async function withAccessToken<T>(
+  coachId: string,
+  fn: (accessToken: string) => Promise<T>
+): Promise<T | null> {
+  try {
+    const connection = await loadActiveConnection(coachId);
+    if (!connection) return null;
+    const accessToken = await ensureFreshAccessToken(connection);
+    if (!accessToken) return null;
+    return await fn(accessToken);
+  } catch (err) {
+    console.warn("Calendar event call failed; booking proceeds without calendar sync.", err);
+    return null;
+  }
+}
+
+async function touchLastSyncedAt(coachId: string): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("calendar_connections")
+    .update({ last_synced_at: new Date().toISOString() })
+    .eq("coach_id", coachId)
+    .eq("provider", "google")
+    .eq("calendar_id", "primary");
+
+  if (error) {
+    console.warn("Failed to touch calendar_connections.last_synced_at.", error);
+  }
 }

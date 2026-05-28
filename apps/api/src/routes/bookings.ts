@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authenticate, requireRole } from "../middleware/auth.js";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { getDefaultCoachId } from "../services/coaches.service.js";
+import { createEvent } from "../services/googleCalendar.service.js";
 
 export const bookingsRouter = Router();
 
@@ -143,9 +144,9 @@ bookingsRouter.post(
         .eq("id", params.id)
         .eq("status", "hold") // optimistic guard: another writer may have moved on
         .select(
-          "id, client_id, coach_id, training_type_id, starts_at, ends_at, status, hold_expires_at"
+          "id, client_id, coach_id, training_type_id, starts_at, ends_at, status, hold_expires_at, notes, other_training_text, training_type:training_types(name), client:clients(athlete_name)"
         )
-        .single();
+        .single<ConfirmedBookingRow>();
 
       if (updateError) {
         if (isExclusionViolation(updateError)) {
@@ -156,7 +157,33 @@ bookingsRouter.post(
         throw updateError;
       }
 
-      res.json({ booking: updated });
+      // Mirror the confirmed booking onto the coach's Google Calendar. Failure
+      // is non-fatal — the DB is the source of truth and a calendar outage
+      // must not roll back a real reservation. See CLAUDE.md "booking
+      // architecture is the load-bearing piece".
+      const eventResult = await createEvent({
+        coachId: updated.coach_id,
+        startsAt: updated.starts_at,
+        endsAt: updated.ends_at,
+        summary: buildEventSummary(updated),
+        description: updated.notes
+      });
+
+      if (eventResult) {
+        const { error: persistError } = await supabaseAdmin
+          .from("bookings")
+          .update({ google_calendar_event_id: eventResult.eventId })
+          .eq("id", updated.id);
+        if (persistError) {
+          console.warn(
+            `Calendar event ${eventResult.eventId} created but persisting the link on booking ${updated.id} failed.`,
+            persistError
+          );
+        }
+      }
+
+      const { training_type: _tt, client: _client, other_training_text: _ott, ...response } = updated;
+      res.json({ booking: response });
     } catch (error) {
       next(error);
     }
@@ -209,4 +236,34 @@ function isExclusionViolation(error: unknown): boolean {
   return Boolean(
     error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "23P01"
   );
+}
+
+type ConfirmedBookingRow = {
+  id: string;
+  client_id: string | null;
+  coach_id: string;
+  training_type_id: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  hold_expires_at: string | null;
+  notes: string | null;
+  other_training_text: string | null;
+  training_type: { name: string } | null;
+  client: { athlete_name: string } | null;
+};
+
+/**
+ * Builds the title that appears on the coach's calendar for a confirmed
+ * booking. Falls back gracefully when the booking has no linked client (admin
+ * walk-in) or no resolvable training type.
+ */
+function buildEventSummary(booking: ConfirmedBookingRow): string {
+  const typeName = booking.training_type?.name ?? "Training";
+  const clientName = booking.client?.athlete_name;
+  const base = clientName ? `${typeName} with ${clientName}` : `${typeName} session`;
+  if (typeName === "Other" && booking.other_training_text) {
+    return `${base} (${booking.other_training_text})`;
+  }
+  return base;
 }
