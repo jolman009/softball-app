@@ -2,7 +2,7 @@
 
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
-> **Last updated:** 2026-05-28 (Phase 4.1 landed — admin can now CRUD weekly windows, exceptions, and booking rules from `/admin/availability`; engine now reads `coach_settings` instead of constants.)
+> **Last updated:** 2026-05-28 (Phase 4.1 landed + hardened — admin can CRUD weekly windows, exceptions, and booking rules from `/admin/availability`; engine reads `coach_settings` instead of constants; weekly windows now have an overlap guard (gist exclusion constraint + server-side 409 pre-check), verified end-to-end and applied to the live DB.)
 > **Current phase:** Phase 4.1 — Admin: availability management ✅ shipped; next up Phase 4.2 (clients & session notes).
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
