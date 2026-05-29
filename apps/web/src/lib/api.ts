@@ -240,3 +240,136 @@ export async function startCalendarConnect(): Promise<string> {
 export async function disconnectCalendar(): Promise<void> {
   await apiFetch<void>("/calendar/disconnect", { method: "POST", auth: true });
 }
+
+// ============================================================
+// Admin: availability management (Phase 4.1)
+// ============================================================
+
+export type AvailabilityWindow = {
+  id: string;
+  day_of_week: number;
+  /** "HH:MM:SS" as Postgres returns it. */
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AvailabilityWindowInput = {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  timezone?: string;
+  active?: boolean;
+};
+
+export async function fetchAvailabilityWindows(): Promise<AvailabilityWindow[]> {
+  const data = await apiFetch<{ windows: AvailabilityWindow[] }>("/admin/availability/windows", {
+    auth: true
+  });
+  return data.windows;
+}
+
+export async function createAvailabilityWindow(input: AvailabilityWindowInput): Promise<AvailabilityWindow> {
+  const data = await apiFetch<{ window: AvailabilityWindow }>("/admin/availability/windows", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(input)
+  });
+  return data.window;
+}
+
+export async function updateAvailabilityWindow(
+  id: string,
+  patch: Partial<AvailabilityWindowInput>
+): Promise<AvailabilityWindow> {
+  const data = await apiFetch<{ window: AvailabilityWindow }>(`/admin/availability/windows/${id}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(patch)
+  });
+  return data.window;
+}
+
+export async function deleteAvailabilityWindow(id: string): Promise<void> {
+  await apiFetch<void>(`/admin/availability/windows/${id}`, { method: "DELETE", auth: true });
+}
+
+export type AvailabilityExceptionType = "blocked" | "special_opening";
+
+export type AvailabilityException = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  exception_type: AvailabilityExceptionType;
+  reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AvailabilityExceptionInput = {
+  starts_at: string;
+  ends_at: string;
+  exception_type: AvailabilityExceptionType;
+  reason?: string | null;
+};
+
+export async function fetchAvailabilityExceptions(range?: {
+  from?: string;
+  to?: string;
+}): Promise<AvailabilityException[]> {
+  const params = new URLSearchParams();
+  if (range?.from) params.set("from", range.from);
+  if (range?.to) params.set("to", range.to);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const data = await apiFetch<{ exceptions: AvailabilityException[] }>(
+    `/admin/availability/exceptions${suffix}`,
+    { auth: true }
+  );
+  return data.exceptions;
+}
+
+export async function createAvailabilityException(
+  input: AvailabilityExceptionInput
+): Promise<AvailabilityException> {
+  const data = await apiFetch<{ exception: AvailabilityException }>(
+    "/admin/availability/exceptions",
+    {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify(input)
+    }
+  );
+  return data.exception;
+}
+
+export async function deleteAvailabilityException(id: string): Promise<void> {
+  await apiFetch<void>(`/admin/availability/exceptions/${id}`, { method: "DELETE", auth: true });
+}
+
+export type CoachSettings = {
+  buffer_minutes: number;
+  min_notice_hours: number;
+  max_booking_days: number;
+  updated_at: string;
+};
+
+export type CoachSettingsInput = Partial<Pick<CoachSettings, "buffer_minutes" | "min_notice_hours" | "max_booking_days">>;
+
+export async function fetchCoachSettings(): Promise<CoachSettings> {
+  const data = await apiFetch<{ settings: CoachSettings }>("/admin/availability/settings", {
+    auth: true
+  });
+  return data.settings;
+}
+
+export async function updateCoachSettings(patch: CoachSettingsInput): Promise<CoachSettings> {
+  const data = await apiFetch<{ settings: CoachSettings }>("/admin/availability/settings", {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(patch)
+  });
+  return data.settings;
+}

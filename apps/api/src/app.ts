@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env.js";
 import { adminRouter } from "./routes/admin.js";
+import { adminAvailabilityRouter } from "./routes/adminAvailability.js";
 import { authRouter } from "./routes/auth.js";
 import { availabilityRouter } from "./routes/availability.js";
 import { bookingsRouter } from "./routes/bookings.js";
@@ -33,6 +34,9 @@ export function createApp() {
   app.use("/api/bookings", bookingsRouter);
   app.use("/api/calendar", calendarRouter);
   app.use("/api/me", meRouter);
+  // Mount the availability sub-router *before* the catch-all admin router so
+  // its specific paths (e.g. /api/admin/availability/windows) take precedence.
+  app.use("/api/admin/availability", adminAvailabilityRouter);
   app.use("/api/admin", adminRouter);
 
   app.use(notFound);

@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AdminAvailabilityPage } from "./pages/AdminAvailabilityPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AdminPlaceholderPage } from "./pages/AdminPlaceholderPage";
 import { BookingPage } from "./pages/BookingPage";
@@ -23,16 +24,7 @@ export function App() {
         </Route>
         <Route element={<ProtectedRoute roles={["admin"]} />}>
           <Route path="admin" element={<AdminDashboardPage />} />
-          <Route
-            path="admin/availability"
-            element={
-              <AdminPlaceholderPage
-                title="Availability settings"
-                phase="Phase 4"
-                description="Manage weekly availability windows, blocked dates, special openings, and booking rules (buffer, minimum notice, max window)."
-              />
-            }
-          />
+          <Route path="admin/availability" element={<AdminAvailabilityPage />} />
           <Route
             path="admin/clients"
             element={

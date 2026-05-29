@@ -2,8 +2,8 @@
 
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
-> **Last updated:** 2026-05-28 (Phase 3.3 create-on-confirm landed — confirmed bookings now mirror onto the coach's Google Calendar; update/delete service plumbing is ready but wired in Phase 4.3.)
-> **Current phase:** Phase 3.3 — Event sync on confirm/cancel/reschedule (create wired; update/delete pending until Phase 4.3 actions exist)
+> **Last updated:** 2026-05-28 (Phase 4.1 landed — admin can now CRUD weekly windows, exceptions, and booking rules from `/admin/availability`; engine now reads `coach_settings` instead of constants.)
+> **Current phase:** Phase 4.1 — Admin: availability management ✅ shipped; next up Phase 4.2 (clients & session notes).
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -72,10 +72,12 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 **Target window:** 2026-08-11 → 2026-09-14 (≈ 5 weeks)
 **Goal:** The admin can run the business from the app — manage availability, clients, resources — and clients can read what's been shared with them.
 
-### 4.1 Admin: availability management
-- [ ] CRUD UI for `availability_windows` (weekly schedule).
-- [ ] CRUD UI for `availability_exceptions` (blocked / special openings).
-- [ ] Settings panel for buffer / min-notice / max-window (new `coach_settings` table).
+### 4.1 Admin: availability management — *shipped 2026-05-28*
+- [x] CRUD UI for `availability_windows` (weekly schedule). *(Group-by-day list with pause toggle + delete; add-form validates `end > start` client-side and the API double-checks server-side.)*
+- [x] CRUD UI for `availability_exceptions` (blocked / special openings). *(Lists the next 180 days; `datetime-local` inputs converted to UTC ISO before submit; create + delete only — edits intentionally skipped until a real workflow asks for them.)*
+- [x] Settings panel for buffer / min-notice / max-window (new `coach_settings` table). *(Migration `202605280001_coach_settings.sql` seeds defaults for existing admins; `availability.service.ts` reads from the row with a defaults fallback so a bad settings row can't take public availability offline.)*
+
+> **Note (2026-05-28):** All admin endpoints operate against the *default coach* (earliest admin) so the single-coach model stays consistent with the booking engine. Multi-coach support will move `coach_id` from the resolver into the path. Migration must be applied via the Supabase dashboard SQL editor — local `supabase db push` is blocked by the outbound-5432 issue noted at top.
 
 ### 4.2 Admin: clients & session notes
 - [ ] Client list with search + filter.

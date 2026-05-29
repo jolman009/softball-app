@@ -8,25 +8,38 @@ import { getFreeBusy } from "./googleCalendar.service.js";
  * Pipeline:
  *   1. Expand `availability_windows` over the requested range, honoring each window's tz.
  *   2. Union `special_opening` exceptions, subtract `blocked` exceptions.
- *   3. Subtract existing bookings (status hold/pending/confirmed), padded by BUFFER_MINUTES,
- *      plus Google Calendar FreeBusy intervals (no buffer).
- *   4. Apply min-notice and max-window guards.
+ *   3. Subtract existing bookings (status hold/pending/confirmed), padded by the coach's
+ *      configured buffer, plus Google Calendar FreeBusy intervals (no buffer).
+ *   4. Apply min-notice and max-window guards from coach_settings.
  *   5. Slice the surviving intervals into discrete slots of the training type's duration.
  *
  * All inputs and outputs are UTC ISO timestamps.
  *
  * Known limitations:
- *   - Buffer/min-notice/max-window are constants here. Phase 4 will move them to a settings table.
  *   - DST transitions are resolved at each boundary; ambiguous local times during a "fall back"
  *     resolve to the later offset. Acceptable for v1.
  *   - FreeBusy failures (Google down, token revoked) degrade silently to DB-only — see
  *     googleCalendar.service.ts.
+ *   - coach_settings read failures fall back to the defaults below so a bad settings row
+ *     can never take public availability offline.
  */
 
-const BUFFER_MINUTES = 15;
-const MIN_NOTICE_HOURS = 12;
-const MAX_BOOKING_DAYS = 60;
+const DEFAULT_BUFFER_MINUTES = 15;
+const DEFAULT_MIN_NOTICE_HOURS = 12;
+const DEFAULT_MAX_BOOKING_DAYS = 60;
 const DEFAULT_DURATION_MINUTES = 60;
+
+type CoachSettings = {
+  buffer_minutes: number;
+  min_notice_hours: number;
+  max_booking_days: number;
+};
+
+const DEFAULT_SETTINGS: CoachSettings = {
+  buffer_minutes: DEFAULT_BUFFER_MINUTES,
+  min_notice_hours: DEFAULT_MIN_NOTICE_HOURS,
+  max_booking_days: DEFAULT_MAX_BOOKING_DAYS
+};
 
 export type Slot = {
   starts_at: string;
@@ -77,11 +90,12 @@ export async function computeAvailableSlots(input: ComputeAvailabilityInput): Pr
   const durationMinutes = await resolveDurationMinutes(input.trainingTypeId);
   const durationMs = durationMinutes * 60_000;
 
-  const [windows, exceptions, bookings, freeBusyHoles] = await Promise.all([
+  const [windows, exceptions, bookings, freeBusyHoles, settings] = await Promise.all([
     loadWindows(coachId),
     loadExceptions(coachId, input.from, input.to),
     loadBookings(coachId, input.from, input.to),
-    getFreeBusy(coachId, input.from, input.to)
+    getFreeBusy(coachId, input.from, input.to),
+    loadCoachSettings(coachId)
   ]);
 
   if (windows.length === 0 && exceptions.every((e) => e.exception_type !== "special_opening")) {
@@ -117,10 +131,11 @@ export async function computeAvailableSlots(input: ComputeAvailabilityInput): Pr
     .map((e) => ({ start: Date.parse(e.starts_at), end: Date.parse(e.ends_at) }));
   open = subtractHoles(open, mergeIntervals(blockedHoles));
 
-  // 4. Subtract existing bookings padded by BUFFER_MINUTES on each side.
+  // 4. Subtract existing bookings padded by the coach's buffer on each side.
+  const bufferMs = settings.buffer_minutes * 60_000;
   const bookingHoles = bookings.map((b) => ({
-    start: Date.parse(b.starts_at) - BUFFER_MINUTES * 60_000,
-    end: Date.parse(b.ends_at) + BUFFER_MINUTES * 60_000
+    start: Date.parse(b.starts_at) - bufferMs,
+    end: Date.parse(b.ends_at) + bufferMs
   }));
   // 4b. Subtract Google Calendar busy intervals. No buffer here — the coach's
   // calendar already represents literal "do not book" times and adding buffer
@@ -129,8 +144,8 @@ export async function computeAvailableSlots(input: ComputeAvailabilityInput): Pr
 
   // 5. Clamp to [from, to] and apply min-notice / max-window guards.
   const now = Date.now();
-  const earliest = now + MIN_NOTICE_HOURS * 60 * 60 * 1000;
-  const latest = now + MAX_BOOKING_DAYS * 24 * 60 * 60 * 1000;
+  const earliest = now + settings.min_notice_hours * 60 * 60 * 1000;
+  const latest = now + settings.max_booking_days * 24 * 60 * 60 * 1000;
   const lowerBound = Math.max(fromMs, earliest);
   const upperBound = Math.min(toMs, latest);
 
@@ -200,6 +215,25 @@ async function loadExceptions(
 
   if (error) throw error;
   return data ?? [];
+}
+
+/**
+ * Loads the coach's booking rules from `coach_settings`. Falls back to defaults
+ * if the row is missing or the query errors — a bad settings row must never
+ * take public availability offline.
+ */
+async function loadCoachSettings(coachId: string): Promise<CoachSettings> {
+  const { data, error } = await supabaseAdmin
+    .from("coach_settings")
+    .select("buffer_minutes, min_notice_hours, max_booking_days")
+    .eq("coach_id", coachId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn(`coach_settings lookup failed for ${coachId}; using defaults.`, error);
+    return DEFAULT_SETTINGS;
+  }
+  return data ?? DEFAULT_SETTINGS;
 }
 
 async function loadBookings(
