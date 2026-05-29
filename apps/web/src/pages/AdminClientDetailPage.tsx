@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, NotebookPen, ShieldCheck, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ChevronDown, NotebookPen, ShieldCheck, ShieldAlert, Trash2 } from "lucide-react";
 import {
   ApiError,
+  deleteSessionNote,
   fetchAdminClient,
   fetchSessionNote,
   saveSessionNote,
@@ -401,7 +402,7 @@ function BookingHistory({ bookings }: { bookings: AdminClientBooking[] }) {
 
 function BookingRow({ booking }: { booking: AdminClientBooking }) {
   const [open, setOpen] = useState(false);
-  const hasNote = booking.session_note != null;
+  const [hasNote, setHasNote] = useState(booking.session_note != null);
 
   return (
     <li>
@@ -436,18 +437,25 @@ function BookingRow({ booking }: { booking: AdminClientBooking }) {
           />
         </div>
       </button>
-      {open ? <SessionNotesEditor bookingId={booking.id} /> : null}
+      {open ? <SessionNotesEditor bookingId={booking.id} onNoteChange={setHasNote} /> : null}
     </li>
   );
 }
 
-function SessionNotesEditor({ bookingId }: { bookingId: string }) {
+function SessionNotesEditor({
+  bookingId,
+  onNoteChange
+}: {
+  bookingId: string;
+  onNoteChange: (hasNote: boolean) => void;
+}) {
   const [note, setNote] = useState<SessionNote | null>(null);
   const [privateNotes, setPrivateNotes] = useState("");
   const [summary, setSummary] = useState("");
   const [homework, setHomework] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
@@ -481,10 +489,30 @@ function SessionNotesEditor({ bookingId }: { bookingId: string }) {
       });
       setNote(saved);
       setSavedAt(saved.updated_at);
+      onNoteChange(true);
     } catch (err) {
       setError(formatError(err));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm("Delete the notes for this session?")) return;
+    setDeleting(true);
+    setError(null);
+    setSavedAt(null);
+    try {
+      await deleteSessionNote(bookingId);
+      setNote(null);
+      setPrivateNotes("");
+      setSummary("");
+      setHomework("");
+      onNoteChange(false);
+    } catch (err) {
+      setError(formatError(err));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -523,11 +551,22 @@ function SessionNotesEditor({ bookingId }: { bookingId: string }) {
         <button
           type="button"
           onClick={() => void handleSave()}
-          disabled={saving}
+          disabled={saving || deleting}
           className="focus-ring rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:bg-field/40"
         >
           {saving ? "Saving…" : note ? "Update notes" : "Save notes"}
         </button>
+        {note ? (
+          <button
+            type="button"
+            onClick={() => void handleDelete()}
+            disabled={saving || deleting}
+            className="focus-ring inline-flex items-center gap-1.5 rounded border border-clay/30 px-3 py-2 text-sm font-bold text-clay transition hover:bg-clay/10 disabled:opacity-50"
+          >
+            <Trash2 size={15} />
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
+        ) : null}
         {savedAt ? <span className="text-xs font-semibold text-field">Saved.</span> : null}
       </div>
     </div>

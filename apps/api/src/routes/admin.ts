@@ -142,3 +142,20 @@ adminRouter.put("/bookings/:bookingId/notes", async (req, res, next) => {
     next(error);
   }
 });
+
+/** Deletes the session note for a booking. Idempotent — 204 even if none existed. */
+adminRouter.delete("/bookings/:bookingId/notes", async (req, res, next) => {
+  try {
+    const { bookingId } = bookingIdParamsSchema.parse(req.params);
+
+    const { error } = await supabaseAdmin
+      .from("session_notes")
+      .delete()
+      .eq("booking_id", bookingId);
+
+    if (error) throw error;
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});

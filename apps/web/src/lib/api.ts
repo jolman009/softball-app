@@ -511,3 +511,8 @@ export async function saveSessionNote(bookingId: string, input: SessionNoteInput
   });
   return data.note;
 }
+
+/** Deletes the session note for a booking. Idempotent. */
+export async function deleteSessionNote(bookingId: string): Promise<void> {
+  await apiFetch<void>(`/admin/bookings/${bookingId}/notes`, { method: "DELETE", auth: true });
+}
