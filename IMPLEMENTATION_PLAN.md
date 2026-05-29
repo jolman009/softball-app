@@ -3,7 +3,7 @@
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
 > **Last updated:** 2026-05-28 (Phase 4.1 landed + hardened — admin can CRUD weekly windows, exceptions, and booking rules from `/admin/availability`; engine reads `coach_settings` instead of constants; weekly windows now have an overlap guard (gist exclusion constraint + server-side 409 pre-check), verified end-to-end and applied to the live DB.)
-> **Current phase:** Phase 4.1 — Admin: availability management ✅ shipped; next up Phase 4.2 (clients & session notes).
+> **Current phase:** Phase 4.2 — Admin: clients & session notes ✅ shipped; next up Phase 4.3 (bookings management: reschedule/cancel/complete + manual booking).
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -80,10 +80,12 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 
 > **Note (2026-05-28):** All admin endpoints operate against the *default coach* (earliest admin) so the single-coach model stays consistent with the booking engine. Multi-coach support will move `coach_id` from the resolver into the path. Migration must be applied via the Supabase dashboard SQL editor — local `supabase db push` is blocked by the outbound-5432 issue noted at top.
 
-### 4.2 Admin: clients & session notes
-- [ ] Client list with search + filter.
-- [ ] Client profile: athlete details, waiver flag, history of bookings.
-- [ ] Session notes editor (`session_notes` table) with private vs client-visible split + homework field.
+### 4.2 Admin: clients & session notes — *shipped 2026-05-28*
+- [x] Client list with search + filter. *(`/admin/clients` — debounced search over athlete/guardian name via `.or(ilike)`, skill-level filter chips, session count per client. Backend `adminClients.ts` GET `/`.)*
+- [x] Client profile: athlete details, waiver flag, history of bookings. *(`/admin/clients/:id` — inline edit (PATCH) of athlete fields; waiver/media-consent surfaced as booleans that map to `*_at` timestamps server-side; booking history newest-first with status pills. Backend GET `/:id` + PATCH `/:id`.)*
+- [x] Session notes editor (`session_notes` table) with private vs client-visible split + homework field. *(Expandable per-booking editor on the profile page; upsert keyed on the `unique(booking_id)` constraint via PUT `/api/admin/bookings/:bookingId/notes` — `coach_id`/`client_id` derived from the booking, never trusted from the client; "Note" badge on booked rows that already have one.)*
+
+> **Note (2026-05-28):** All verified in-browser end-to-end (list/search, profile edit + waiver toggle, notes create + persist). No new migration — uses existing `clients` / `session_notes` tables. `/admin/resources` remains a placeholder until Phase 4.4.
 
 ### 4.3 Admin: bookings management
 - [ ] Reschedule / cancel / mark-complete / no-show actions.

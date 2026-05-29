@@ -5,6 +5,7 @@ import morgan from "morgan";
 import { env } from "./config/env.js";
 import { adminRouter } from "./routes/admin.js";
 import { adminAvailabilityRouter } from "./routes/adminAvailability.js";
+import { adminClientsRouter } from "./routes/adminClients.js";
 import { authRouter } from "./routes/auth.js";
 import { availabilityRouter } from "./routes/availability.js";
 import { bookingsRouter } from "./routes/bookings.js";
@@ -37,6 +38,7 @@ export function createApp() {
   // Mount the availability sub-router *before* the catch-all admin router so
   // its specific paths (e.g. /api/admin/availability/windows) take precedence.
   app.use("/api/admin/availability", adminAvailabilityRouter);
+  app.use("/api/admin/clients", adminClientsRouter);
   app.use("/api/admin", adminRouter);
 
   app.use(notFound);

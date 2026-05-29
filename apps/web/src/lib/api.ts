@@ -373,3 +373,141 @@ export async function updateCoachSettings(patch: CoachSettingsInput): Promise<Co
   });
   return data.settings;
 }
+
+// ============================================================
+// Admin: clients & session notes (Phase 4.2)
+// ============================================================
+
+export type SkillLevel = "beginner" | "intermediate" | "advanced";
+
+export type ClientProfileLink = {
+  id: string;
+  email: string;
+  phone: string | null;
+  first_name: string | null;
+  last_name: string | null;
+} | null;
+
+export type AdminClientListItem = {
+  id: string;
+  athlete_name: string;
+  athlete_age: number | null;
+  skill_level: SkillLevel | null;
+  primary_position: string | null;
+  guardian_name: string | null;
+  waiver_signed_at: string | null;
+  created_at: string;
+  profile: ClientProfileLink;
+  session_count: number;
+};
+
+export type AdminClientProfile = {
+  id: string;
+  user_id: string;
+  athlete_name: string;
+  athlete_age: number | null;
+  skill_level: SkillLevel | null;
+  primary_position: string | null;
+  guardian_name: string | null;
+  guardian_email: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  waiver_signed_at: string | null;
+  media_consent_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  profile: ClientProfileLink;
+};
+
+export type AdminClientBooking = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  status: BookingStatus;
+  price: number | string;
+  notes: string | null;
+  training_type: { id: string; name: string } | null;
+  /** Embedded one-to-one (unique per booking); null means no note yet. */
+  session_note: { id: string } | null;
+};
+
+export type AdminClientDetail = {
+  client: AdminClientProfile;
+  bookings: AdminClientBooking[];
+};
+
+export type AdminClientPatch = Partial<{
+  athlete_name: string;
+  athlete_age: number | null;
+  skill_level: SkillLevel | null;
+  primary_position: string | null;
+  guardian_name: string | null;
+  guardian_email: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  notes: string | null;
+  waiver_signed: boolean;
+  media_consent: boolean;
+}>;
+
+export async function fetchAdminClients(query?: {
+  search?: string;
+  skillLevel?: SkillLevel;
+}): Promise<AdminClientListItem[]> {
+  const params = new URLSearchParams();
+  if (query?.search) params.set("search", query.search);
+  if (query?.skillLevel) params.set("skillLevel", query.skillLevel);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const data = await apiFetch<{ clients: AdminClientListItem[] }>(`/admin/clients${suffix}`, {
+    auth: true
+  });
+  return data.clients;
+}
+
+export async function fetchAdminClient(id: string): Promise<AdminClientDetail> {
+  return apiFetch<AdminClientDetail>(`/admin/clients/${id}`, { auth: true });
+}
+
+export async function updateAdminClient(id: string, patch: AdminClientPatch): Promise<AdminClientProfile> {
+  const data = await apiFetch<{ client: AdminClientProfile }>(`/admin/clients/${id}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(patch)
+  });
+  return data.client;
+}
+
+export type SessionNote = {
+  id: string;
+  booking_id: string;
+  client_id: string;
+  coach_id: string;
+  private_notes: string | null;
+  client_visible_summary: string | null;
+  homework: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SessionNoteInput = {
+  private_notes: string | null;
+  client_visible_summary: string | null;
+  homework: string | null;
+};
+
+export async function fetchSessionNote(bookingId: string): Promise<SessionNote | null> {
+  const data = await apiFetch<{ note: SessionNote | null }>(`/admin/bookings/${bookingId}/notes`, {
+    auth: true
+  });
+  return data.note;
+}
+
+export async function saveSessionNote(bookingId: string, input: SessionNoteInput): Promise<SessionNote> {
+  const data = await apiFetch<{ note: SessionNote }>(`/admin/bookings/${bookingId}/notes`, {
+    method: "PUT",
+    auth: true,
+    body: JSON.stringify(input)
+  });
+  return data.note;
+}

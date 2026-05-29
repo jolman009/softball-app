@@ -2,6 +2,8 @@ import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminAvailabilityPage } from "./pages/AdminAvailabilityPage";
+import { AdminClientDetailPage } from "./pages/AdminClientDetailPage";
+import { AdminClientsPage } from "./pages/AdminClientsPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AdminPlaceholderPage } from "./pages/AdminPlaceholderPage";
 import { BookingPage } from "./pages/BookingPage";
@@ -25,16 +27,8 @@ export function App() {
         <Route element={<ProtectedRoute roles={["admin"]} />}>
           <Route path="admin" element={<AdminDashboardPage />} />
           <Route path="admin/availability" element={<AdminAvailabilityPage />} />
-          <Route
-            path="admin/clients"
-            element={
-              <AdminPlaceholderPage
-                title="Clients"
-                phase="Phase 4"
-                description="Athlete profiles, booking history, session notes, and private coach notes."
-              />
-            }
-          />
+          <Route path="admin/clients" element={<AdminClientsPage />} />
+          <Route path="admin/clients/:id" element={<AdminClientDetailPage />} />
           <Route
             path="admin/resources"
             element={
