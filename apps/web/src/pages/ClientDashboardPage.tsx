@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarPlus, Clock3, Hourglass } from "lucide-react";
+import { ArrowRight, CalendarPlus, Clock3, Hourglass, Library } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { fetchMyBookings, type BookingStatus, type BookingSummary } from "@/lib/api";
 
@@ -88,13 +88,22 @@ export function ClientDashboardPage() {
             Your upcoming sessions and lesson history live here.
           </p>
         </div>
-        <Link
-          to="/booking"
-          className="focus-ring inline-flex items-center justify-center gap-2 self-start rounded bg-ink px-5 py-3 font-bold text-white transition hover:bg-clay sm:self-auto"
-        >
-          <CalendarPlus size={18} />
-          Book a session
-        </Link>
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+          <Link
+            to="/resources"
+            className="focus-ring inline-flex items-center justify-center gap-2 rounded border border-ink/15 px-5 py-3 font-bold text-ink transition hover:bg-chalk"
+          >
+            <Library size={18} />
+            Resources
+          </Link>
+          <Link
+            to="/booking"
+            className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-ink px-5 py-3 font-bold text-white transition hover:bg-clay"
+          >
+            <CalendarPlus size={18} />
+            Book a session
+          </Link>
+        </div>
       </div>
 
       {!isEmailVerified ? (

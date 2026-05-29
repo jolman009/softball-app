@@ -2,8 +2,8 @@
 
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
-> **Last updated:** 2026-05-28 (Phase 4.1 landed + hardened — admin can CRUD weekly windows, exceptions, and booking rules from `/admin/availability`; engine reads `coach_settings` instead of constants; weekly windows now have an overlap guard (gist exclusion constraint + server-side 409 pre-check), verified end-to-end and applied to the live DB.)
-> **Current phase:** Phase 4.3 — Admin: bookings management ✅ shipped (+ Phase 3.3 calendar update/delete now wired); next up Phase 4.4 (resource library).
+> **Last updated:** 2026-05-29 (Phase 4.4 landed — resource library: admin upload/create/delete at `/admin/resources` (files go browser → Storage via signed upload URL), client browse/detail at `/resources` with visibility-enforced signed URLs. Verified in-browser end-to-end.)
+> **Current phase:** Phase 4.4 — Resource library ✅ shipped; next up Phase 4.5 (client video review).
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -24,7 +24,7 @@
 | Admin dashboard | ✅ Done | Today's schedule + week/month/revenue metrics + Phase 4 quick links (Phase 2.5) |
 | Google sign-in | ✅ Done | Wired into LoginPage + BookingPage modal; OAuth resume on booking flow (Phase 2.6) |
 | Google Calendar integration | ✅ Done | OAuth (3.1) + FreeBusy (3.2) + event create-on-confirm, update-on-reschedule, delete-on-cancel (3.3, wired in 4.3) |
-| Resource library (coach → client) | 🔴 Not started | Tables exist, no UI · Phase 4 |
+| Resource library (coach → client) | ✅ Done | Admin CRUD + client browse/detail; signed URLs; visibility enforced (Phase 4.4) |
 | Client video uploads & review (client → coach) | 🔴 Not started | Phase 4.5 |
 | Email confirmations | 🔴 Not started | |
 | Mobile / Capacitor | 🔴 Not started | |
@@ -93,13 +93,15 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 
 > **Note (2026-05-29):** All actions verified in-browser end-to-end (create → reschedule → complete; second booking → cancel with reason prompt; status filters). Admins may book outside availability windows and without a client; the overlap constraint is the only hard guard. No new migration.
 
-### 4.4 Resource library
-- [ ] Admin upload screen → Supabase Storage (use the private bucket from the migration).
-- [ ] Categorization by `resource_categories`, skill level, training type.
-- [ ] Client view: signed URLs for private files, respect `visibility` enum.
-- [ ] Resource detail page (video player / PDF embed / link card).
+### 4.4 Resource library — *shipped 2026-05-29*
+- [x] Admin upload screen → Supabase Storage (use the private bucket from the migration). *(`/admin/resources` — add-form with type-aware payload (file / URL / note text). Files go browser → Storage directly via a signed upload URL minted by `POST /api/admin/resources/upload-url` (objects namespaced `{coachId}/{ts}-{slug}` so large videos never stream through Express); the returned `storage_path` is attached on `POST /api/admin/resources`. Each row has inline edit (`PATCH` of title/description/category/skill/session-type/visibility, plus link URL or note body — the file/type can't be swapped in place) and delete (removes the row + best-effort removes the Storage object).)*
+- [x] Categorization by `resource_categories`, skill level, training type. *(Category dropdown from the seeded `resource_categories`; skill-level enum; `session_type` dropdown sourced from `training_types.name` (matches the `is_booked_client` join). All optional.)*
+- [x] Client view: signed URLs for private files, respect `visibility` enum. *(`GET /api/resources` + `/:id`. The API runs as service-role (RLS bypassed), so visibility is enforced in JS in `resources.service.ts` — mirrors `resources_client_read_visible`: `all_clients` → any signed-in client; `booked_clients` → must have a confirmed/completed booking, scoped to `session_type` when set; `admin_only` → hidden (404, not 403, so existence doesn't leak). Admins bypass the filter. Storage-backed rows get a 1-hour signed `file_url`; sign failures degrade to `file_url: null` rather than 500-ing.)*
+- [x] Resource detail page (video player / PDF embed / link card). *(`/resources` grouped-by-category list → `/resources/:id` renders `<video>` / `<img>` / PDF `<iframe>` + open-in-tab / external link card / pre-wrapped text note. "Resources" CTA added to the client dashboard header.)*
 
-**Exit criteria:** Coach can run a full session day-of (see, take notes, mark done, share a video) without touching the database.
+**Exit criteria:** Coach can run a full session day-of (see, take notes, mark done, share a video) without touching the database. ✅
+
+> **Note (2026-05-29):** Verified in-browser end-to-end as `jolman009@yahoo.com` (admin): created a text note → appeared in the admin library and the grouped client list → detail page rendered the note; uploaded a PNG via the signed-upload path → Storage object stored under the coach prefix with a working signed "Open" URL; created a link → inline-edited its title/skill/visibility and confirmed the change persisted; deleted all test rows (+ objects) to leave the dev DB clean. Zero console errors throughout. No new migration — uses the `resources` / `resource_categories` tables and the private `training-resources` bucket from the initial schema.
 
 ---
 

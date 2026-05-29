@@ -1,6 +1,8 @@
 import { env } from "./env";
 import { supabase } from "./supabase";
 
+export const RESOURCE_BUCKET = "training-resources";
+
 export type TrainingType = {
   id: string;
   name: string;
@@ -567,4 +569,138 @@ export async function createManualBooking(input: ManualBookingInput): Promise<vo
     auth: true,
     body: JSON.stringify(input)
   });
+}
+
+// ============================================================
+// Resource library (Phase 4.4)
+// ============================================================
+
+export type ResourceType = "video" | "pdf" | "image" | "link" | "text";
+export type ResourceVisibility = "all_clients" | "booked_clients" | "admin_only";
+export type ResourceSkillLevel = SkillLevel | "all";
+
+export type ResourceCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  sort_order?: number;
+  active?: boolean;
+};
+
+export type Resource = {
+  id: string;
+  category_id: string | null;
+  title: string;
+  description: string | null;
+  skill_level: ResourceSkillLevel;
+  session_type: string | null;
+  resource_type: ResourceType;
+  visibility: ResourceVisibility;
+  storage_path: string | null;
+  external_url: string | null;
+  body: string | null;
+  created_at: string;
+  updated_at: string;
+  category: { id: string; name: string; slug: string } | null;
+  /** Short-lived signed URL for storage-backed resources; null otherwise. */
+  file_url: string | null;
+};
+
+export type ResourceCreateInput = {
+  title: string;
+  description?: string | null;
+  category_id?: string | null;
+  skill_level?: ResourceSkillLevel;
+  session_type?: string | null;
+  visibility?: ResourceVisibility;
+  resource_type: ResourceType;
+  storage_path?: string | null;
+  external_url?: string | null;
+  body?: string | null;
+};
+
+export type ResourcePatch = Partial<{
+  title: string;
+  description: string | null;
+  category_id: string | null;
+  skill_level: ResourceSkillLevel;
+  session_type: string | null;
+  visibility: ResourceVisibility;
+  external_url: string | null;
+  body: string | null;
+}>;
+
+// --- Admin ---
+
+export async function fetchResourceCategories(): Promise<ResourceCategory[]> {
+  const data = await apiFetch<{ categories: ResourceCategory[] }>("/admin/resources/categories", {
+    auth: true
+  });
+  return data.categories;
+}
+
+export async function fetchAdminResources(): Promise<Resource[]> {
+  const data = await apiFetch<{ resources: Resource[] }>("/admin/resources", { auth: true });
+  return data.resources;
+}
+
+/**
+ * Uploads a file to the private resources bucket. The API mints a signed upload
+ * URL (so the bytes go browser → Storage directly, not through Express) and we
+ * push the file to it. Returns the `storage_path` to attach when creating the row.
+ */
+export async function uploadResourceFile(file: File): Promise<string> {
+  const { path, token } = await apiFetch<{ path: string; token: string; signedUrl: string }>(
+    "/admin/resources/upload-url",
+    {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ filename: file.name, contentType: file.type || undefined })
+    }
+  );
+
+  const { error } = await supabase.storage
+    .from(RESOURCE_BUCKET)
+    .uploadToSignedUrl(path, token, file, { contentType: file.type || undefined });
+
+  if (error) {
+    throw new ApiError(502, `Upload failed: ${error.message}`);
+  }
+
+  return path;
+}
+
+export async function createResource(input: ResourceCreateInput): Promise<Resource> {
+  const data = await apiFetch<{ resource: Resource }>("/admin/resources", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(input)
+  });
+  return data.resource;
+}
+
+export async function updateResource(id: string, patch: ResourcePatch): Promise<Resource> {
+  const data = await apiFetch<{ resource: Resource }>(`/admin/resources/${id}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(patch)
+  });
+  return data.resource;
+}
+
+export async function deleteResource(id: string): Promise<void> {
+  await apiFetch<void>(`/admin/resources/${id}`, { method: "DELETE", auth: true });
+}
+
+// --- Client (and admin) read views ---
+
+export async function fetchResources(): Promise<Resource[]> {
+  const data = await apiFetch<{ resources: Resource[] }>("/resources", { auth: true });
+  return data.resources;
+}
+
+export async function fetchResource(id: string): Promise<Resource> {
+  const data = await apiFetch<{ resource: Resource }>(`/resources/${id}`, { auth: true });
+  return data.resource;
 }
