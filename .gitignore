@@ -12,3 +12,6 @@ coverage/
 .vite/
 .turbo/
 *.tsbuildinfo
+
+# Playwright MCP scratch artifacts (snapshots, console logs)
+.playwright-mcp/

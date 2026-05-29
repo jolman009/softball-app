@@ -32,6 +32,19 @@ function isConstraintViolation(error: unknown): error is { code: string; message
   return code === "23P01" || code === "23514" || code === "23505";
 }
 
+/** Exclusion-constraint violation specifically (race-safe overlap backstop). */
+function isExclusionViolation(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: string }).code === "23P01"
+  );
+}
+
+const WINDOW_OVERLAP_MESSAGE =
+  "That window overlaps an existing one on the same day. Adjust the times or remove the other window first.";
+
 // ============================================================
 // Availability windows (weekly recurring schedule)
 // ============================================================
@@ -45,6 +58,43 @@ const windowBodySchema = z.object({
 });
 
 const windowPatchSchema = windowBodySchema.partial();
+
+/**
+ * Friendly pre-check that mirrors the `availability_windows_no_active_overlap`
+ * exclusion constraint: only active windows on the same day + timezone collide,
+ * compared as half-open ranges (a window ending at 19:00 does not conflict with
+ * one starting at 19:00). The DB constraint is the race-safe source of truth;
+ * this just lets us return a readable error instead of raw Postgres text.
+ *
+ * `start`/`end` are "HH:MM" — zero-padded 24h strings compare chronologically.
+ */
+async function findOverlappingWindow(
+  coachId: string,
+  dayOfWeek: number,
+  timezone: string,
+  start: string,
+  end: string,
+  excludeId?: string
+): Promise<boolean> {
+  let q = supabaseAdmin
+    .from("availability_windows")
+    .select("id, start_time, end_time")
+    .eq("coach_id", coachId)
+    .eq("day_of_week", dayOfWeek)
+    .eq("timezone", timezone)
+    .eq("active", true);
+
+  if (excludeId) q = q.neq("id", excludeId);
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  return (data ?? []).some((w) => {
+    const existingStart = w.start_time.slice(0, 5);
+    const existingEnd = w.end_time.slice(0, 5);
+    return start < existingEnd && existingStart < end;
+  });
+}
 
 adminAvailabilityRouter.get("/windows", async (_req, res, next) => {
   try {
@@ -75,6 +125,19 @@ adminAvailabilityRouter.post("/windows", async (req, res, next) => {
     const coachId = await resolveCoachId();
     if (!coachId) return res.status(409).json({ error: "No coach profile available" });
 
+    if (
+      body.active &&
+      (await findOverlappingWindow(
+        coachId,
+        body.day_of_week,
+        body.timezone,
+        body.start_time,
+        body.end_time
+      ))
+    ) {
+      return res.status(409).json({ error: WINDOW_OVERLAP_MESSAGE });
+    }
+
     const { data, error } = await supabaseAdmin
       .from("availability_windows")
       .insert({
@@ -89,6 +152,9 @@ adminAvailabilityRouter.post("/windows", async (req, res, next) => {
       .single();
 
     if (error) {
+      if (isExclusionViolation(error)) {
+        return res.status(409).json({ error: WINDOW_OVERLAP_MESSAGE });
+      }
       if (isConstraintViolation(error)) {
         return res.status(400).json({ error: error.message ?? "Invalid window" });
       }
@@ -109,12 +175,46 @@ adminAvailabilityRouter.patch("/windows/:id", async (req, res, next) => {
     if (Object.keys(body).length === 0) {
       return res.status(400).json({ error: "No fields to update" });
     }
-    if (body.start_time != null && body.end_time != null && body.end_time <= body.start_time) {
-      return res.status(400).json({ error: "end_time must be after start_time" });
-    }
 
     const coachId = await resolveCoachId();
     if (!coachId) return res.status(404).json({ error: "Window not found" });
+
+    // Fetch the current row so we can validate and overlap-check against the
+    // *effective* values (a partial patch may touch only one of start/end, or
+    // just flip `active` back on into a slot that now conflicts).
+    const { data: existing, error: fetchError } = await supabaseAdmin
+      .from("availability_windows")
+      .select("day_of_week, start_time, end_time, timezone, active")
+      .eq("id", params.id)
+      .eq("coach_id", coachId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+    if (!existing) return res.status(404).json({ error: "Window not found" });
+
+    const effectiveDay = body.day_of_week ?? existing.day_of_week;
+    const effectiveTz = body.timezone ?? existing.timezone;
+    const effectiveStart = (body.start_time ?? existing.start_time).slice(0, 5);
+    const effectiveEnd = (body.end_time ?? existing.end_time).slice(0, 5);
+    const effectiveActive = body.active ?? existing.active;
+
+    if (effectiveEnd <= effectiveStart) {
+      return res.status(400).json({ error: "end_time must be after start_time" });
+    }
+
+    if (
+      effectiveActive &&
+      (await findOverlappingWindow(
+        coachId,
+        effectiveDay,
+        effectiveTz,
+        effectiveStart,
+        effectiveEnd,
+        params.id
+      ))
+    ) {
+      return res.status(409).json({ error: WINDOW_OVERLAP_MESSAGE });
+    }
 
     const { data, error } = await supabaseAdmin
       .from("availability_windows")
@@ -125,6 +225,9 @@ adminAvailabilityRouter.patch("/windows/:id", async (req, res, next) => {
       .maybeSingle();
 
     if (error) {
+      if (isExclusionViolation(error)) {
+        return res.status(409).json({ error: WINDOW_OVERLAP_MESSAGE });
+      }
       if (isConstraintViolation(error)) {
         return res.status(400).json({ error: error.message ?? "Invalid update" });
       }
