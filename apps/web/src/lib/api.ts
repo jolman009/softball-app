@@ -2,6 +2,7 @@ import { env } from "./env";
 import { supabase } from "./supabase";
 
 export const RESOURCE_BUCKET = "training-resources";
+export const UPLOAD_BUCKET = "client-uploads";
 
 export type TrainingType = {
   id: string;
@@ -703,4 +704,123 @@ export async function fetchResources(): Promise<Resource[]> {
 export async function fetchResource(id: string): Promise<Resource> {
   const data = await apiFetch<{ resource: Resource }>(`/resources/${id}`, { auth: true });
   return data.resource;
+}
+
+// ============================================================
+// Client video uploads (Phase 4.5)
+// ============================================================
+
+export type UploadStatus = "pending_review" | "reviewed" | "archived";
+
+/** Accepted video MIME types — must match the API/bucket allowlist. */
+export const UPLOAD_ALLOWED_MIME = ["video/mp4", "video/quicktime"] as const;
+/** ~200 MB ceiling — matches the API/bucket limit. */
+export const UPLOAD_MAX_BYTES = 200 * 1024 * 1024;
+
+export type ClientUpload = {
+  id: string;
+  client_id: string;
+  booking_id: string | null;
+  storage_path: string;
+  title: string;
+  description: string | null;
+  mime_type: string;
+  bytes: number;
+  status: UploadStatus;
+  coach_summary: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  booking: { id: string; starts_at: string; training_type: { name: string } | null } | null;
+  client: { id: string; athlete_name: string } | null;
+  /** Short-lived signed playback URL; null if the object isn't readable. */
+  playback_url: string | null;
+};
+
+export type CreateUploadInput = {
+  title: string;
+  description?: string | null;
+  bookingId?: string | null;
+};
+
+/**
+ * Uploads a client video. The API inserts a pending-review row and mints a
+ * signed Storage upload URL; the browser then pushes the file straight to
+ * Storage (never through Express). Returns the created upload row.
+ */
+export async function createUpload(file: File, input: CreateUploadInput): Promise<ClientUpload> {
+  const { upload, path, token } = await apiFetch<{
+    upload: ClientUpload;
+    path: string;
+    token: string;
+    signedUrl: string;
+  }>("/me/uploads", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({
+      title: input.title,
+      description: input.description ?? null,
+      filename: file.name,
+      mimeType: file.type,
+      bytes: file.size,
+      bookingId: input.bookingId ?? null
+    })
+  });
+
+  const { error } = await supabase.storage
+    .from(UPLOAD_BUCKET)
+    .uploadToSignedUrl(path, token, file, { contentType: file.type || undefined });
+
+  if (error) {
+    throw new ApiError(502, `Upload failed: ${error.message}`);
+  }
+
+  return upload;
+}
+
+export async function fetchMyUploads(): Promise<ClientUpload[]> {
+  const data = await apiFetch<{ uploads: ClientUpload[] }>("/me/uploads", { auth: true });
+  return data.uploads;
+}
+
+export async function fetchMyUpload(id: string): Promise<ClientUpload> {
+  const data = await apiFetch<{ upload: ClientUpload }>(`/me/uploads/${id}`, { auth: true });
+  return data.upload;
+}
+
+// --- Admin review queue ---
+
+export async function fetchAdminUploads(query?: {
+  status?: UploadStatus;
+  clientId?: string;
+}): Promise<ClientUpload[]> {
+  const params = new URLSearchParams();
+  if (query?.status) params.set("status", query.status);
+  if (query?.clientId) params.set("clientId", query.clientId);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const data = await apiFetch<{ uploads: ClientUpload[] }>(`/admin/uploads${suffix}`, { auth: true });
+  return data.uploads;
+}
+
+export async function fetchAdminUpload(id: string): Promise<ClientUpload> {
+  const data = await apiFetch<{ upload: ClientUpload }>(`/admin/uploads/${id}`, { auth: true });
+  return data.upload;
+}
+
+export type UploadReviewPatch = Partial<{
+  status: UploadStatus;
+  coach_summary: string | null;
+}>;
+
+export async function updateAdminUpload(id: string, patch: UploadReviewPatch): Promise<ClientUpload> {
+  const data = await apiFetch<{ upload: ClientUpload }>(`/admin/uploads/${id}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(patch)
+  });
+  return data.upload;
+}
+
+export async function deleteAdminUpload(id: string): Promise<void> {
+  await apiFetch<void>(`/admin/uploads/${id}`, { method: "DELETE", auth: true });
 }

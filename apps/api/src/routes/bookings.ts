@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { authenticate, requireRole } from "../middleware/auth.js";
 import { supabaseAdmin } from "../lib/supabase.js";
+import { ensureClientForUser } from "../services/clients.service.js";
 import { getDefaultCoachId } from "../services/coaches.service.js";
 import { createEvent } from "../services/googleCalendar.service.js";
 
@@ -52,7 +53,7 @@ bookingsRouter.post("/", authenticate, requireRole(["client", "admin"]), async (
     const { error: sweepError } = await supabaseAdmin.rpc("expire_stale_holds");
     if (sweepError) throw sweepError;
 
-    const client = await ensureClientForBooker(req.user!.id, req.user!.role);
+    const client = await ensureClientForUser(req.user!.id, req.user!.role);
     if (!client && req.user?.role === "client") {
       return res.status(409).json({ error: "Client profile is required before booking" });
     }
@@ -189,47 +190,6 @@ bookingsRouter.post(
     }
   }
 );
-
-/**
- * Returns the booker's `clients` row, creating one on demand when the booker has
- * `role='client'` but no row exists yet. This self-heals the common case where a
- * user signs up with email confirmations on (so the web-side `ensureClientRecord`
- * never runs), confirms out-of-band, then signs in and immediately tries to book.
- *
- * Admins are allowed to book without a linked `clients` row (e.g. manual bookings
- * for walk-ins), so we return null for them and let the caller decide.
- */
-async function ensureClientForBooker(
-  userId: string,
-  role: string
-): Promise<{ id: string } | null> {
-  const { data: existing, error: readError } = await supabaseAdmin
-    .from("clients")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (readError) throw readError;
-  if (existing) return existing;
-  if (role !== "client") return null;
-
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .select("first_name, last_name")
-    .eq("id", userId)
-    .maybeSingle();
-  if (profileError) throw profileError;
-
-  const athleteName =
-    [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim() || "Athlete";
-
-  const { data: created, error: insertError } = await supabaseAdmin
-    .from("clients")
-    .insert({ user_id: userId, athlete_name: athleteName })
-    .select("id")
-    .single();
-  if (insertError) throw insertError;
-  return created;
-}
 
 /** Postgres exclusion_violation — our `bookings_active_no_coach_overlap` constraint. */
 function isExclusionViolation(error: unknown): boolean {

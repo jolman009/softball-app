@@ -2,8 +2,8 @@
 
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
-> **Last updated:** 2026-05-29 (Phase 4.4 landed — resource library: admin upload/create/delete at `/admin/resources` (files go browser → Storage via signed upload URL), client browse/detail at `/resources` with visibility-enforced signed URLs. Verified in-browser end-to-end.)
-> **Current phase:** Phase 4.4 — Resource library ✅ shipped; next up Phase 4.5 (client video review).
+> **Last updated:** 2026-05-29 (Phase 4.5 shipped — client video review: upload widget + "my uploads" on the client dashboard, coach review queue at `/admin/uploads` with feedback summaries. Migration `202605290002_client_uploads.sql` applied via the Supabase dashboard; verified in-browser end-to-end.)
+> **Current phase:** Phase 4.5 — Client video review ✅ shipped. Phase 4 complete; next up Phase 5 (production hardening).
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -25,7 +25,7 @@
 | Google sign-in | ✅ Done | Wired into LoginPage + BookingPage modal; OAuth resume on booking flow (Phase 2.6) |
 | Google Calendar integration | ✅ Done | OAuth (3.1) + FreeBusy (3.2) + event create-on-confirm, update-on-reschedule, delete-on-cancel (3.3, wired in 4.3) |
 | Resource library (coach → client) | ✅ Done | Admin CRUD + client browse/detail; signed URLs; visibility enforced (Phase 4.4) |
-| Client video uploads & review (client → coach) | 🔴 Not started | Phase 4.5 |
+| Client video uploads & review (client → coach) | ✅ Done | Client upload + coach review queue w/ summaries (Phase 4.5) |
 | Email confirmations | 🔴 Not started | |
 | Mobile / Capacitor | 🔴 Not started | |
 | Payments | 🔴 Not started | Post-MVP |
@@ -112,32 +112,35 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 
 *Why this phase exists between 4 and 5: it leans on Phase 4.4's signed-URL plumbing and Phase 4.2's admin client-profile screens. It was originally bucketed under Phase 7 — pulled forward at the user's request on 2026-05-25.*
 
+> **Status (2026-05-29):** Shipped & verified in-browser end-to-end. Migration `202605290002_client_uploads.sql` was applied via the Supabase dashboard SQL editor (`supabase db push` is blocked by the outbound-5432 issue and the in-session Supabase MCP can't reach this project's org). Verified flow: client uploaded an MP4 from the dashboard → it appeared in the coach's `/admin/uploads` queue (and bumped the dashboard pending badge to 1) → coach saved a summary + set status `reviewed` → client saw the summary on `/uploads/:id`. Zero console errors. **Note:** the lesson-attach dropdown surfaces bookings by `created_by`, but the API's ownership guard checks `booking.client_id`; a walk-in/manual booking with a null `client_id` is correctly rejected — a real client's own bookings carry their `client_id` and attach fine.
+
 ### 4.5.1 Schema + storage
-- [ ] New migration: `client_uploads` table — `id`, `client_id`, `booking_id` (nullable, links upload to a specific lesson), `storage_path`, `title`, `description` (nullable), `mime_type`, `bytes`, `status` enum (`pending_review`, `reviewed`, `archived`), `coach_summary` (nullable, client-visible), `reviewed_at` (nullable), timestamps.
-- [ ] New private Storage bucket `client-uploads`.
-- [ ] RLS on `client_uploads`: clients can `insert`/`select` rows owned by their `clients.id`; admins can do everything; nothing public.
-- [ ] Storage object policies: clients can read/write only under their own `{user_id}/...` prefix; admins can read anything in the bucket.
+- [x] New migration: `client_uploads` table — `id`, `client_id`, `booking_id` (nullable, links upload to a specific lesson), `storage_path`, `title`, `description` (nullable), `mime_type`, `bytes`, `status` enum (`pending_review`, `reviewed`, `archived`), `coach_summary` (nullable, client-visible), `reviewed_at` (nullable), `created_by`, timestamps. *(Migration `202605290002_client_uploads.sql`; adds an `updated_at` trigger + indexes on `(client_id, created_at)`, `(status, created_at)`, `booking_id`.)*
+- [x] New private Storage bucket `client-uploads`. *(Created with `file_size_limit` 200 MB + `allowed_mime_types` `video/mp4`, `video/quicktime` so Storage enforces the same limits the API does.)*
+- [x] RLS on `client_uploads`: clients can `insert`/`select` rows owned by their `clients.id`; admins can do everything; nothing public.
+- [x] Storage object policies: clients can read/write only under their own `{user_id}/...` prefix (`(storage.foldername(name))[1] = auth.uid()`); admins can read anything in the bucket.
 
 ### 4.5.2 Backend
-- [ ] `POST /api/me/uploads` (auth: client) — validates MIME + size, returns a signed upload URL, inserts a `client_uploads` row in `pending_review`.
-- [ ] `GET /api/me/uploads` — list own uploads with signed playback URLs.
-- [ ] `GET /api/admin/uploads?status=pending_review` — review queue for the coach.
-- [ ] `GET /api/admin/uploads/:id` — single upload with signed playback URL.
-- [ ] `PATCH /api/admin/uploads/:id` — set `status`, `coach_summary`, stamp `reviewed_at`.
+- [x] `POST /api/me/uploads` (auth: client) — validates MIME + size, mints a signed upload URL, inserts a `client_uploads` row in `pending_review`. *(Validates the booking, if attached, belongs to the caller. Namespaces the object under `{user_id}/`. `me.ts`.)*
+- [x] `GET /api/me/uploads` (+ `GET /api/me/uploads/:id`) — own uploads with signed playback URLs (2 h TTL, degrade to null on failure).
+- [x] `GET /api/admin/uploads?status=&clientId=` — review queue, status + per-client filter (`adminUploads.ts`).
+- [x] `GET /api/admin/uploads/:id` — single upload with signed playback URL.
+- [x] `PATCH /api/admin/uploads/:id` — set `status` + `coach_summary`; stamps `reviewed_at` on → `reviewed`, clears it on → `pending_review`. (+ `DELETE` removes row + Storage object.)
+- *(Refactor: extracted `ensureClientForUser` from `bookings.ts` into `clients.service.ts`; signed-URL plumbing in `uploads.service.ts` mirrors `resources.service.ts`.)*
 
 ### 4.5.3 Client UI
-- [ ] Upload widget on `ClientDashboardPage`: drag-drop, progress bar, MIME allowlist (`video/mp4`, `video/quicktime`), file-size guard (~200 MB).
-- [ ] "My uploads" list with status badges (Pending review / Reviewed / Archived).
-- [ ] Upload detail page: inline `<video>` player + coach summary (when reviewed).
-- [ ] Optional: dropdown to attach an upload to a recent booking.
+- [x] Upload widget on `ClientDashboardPage` (`ClientUploadsSection`): file picker, indeterminate upload bar, MIME allowlist (`video/mp4`, `video/quicktime`), ~200 MB client-side guard.
+- [x] "My uploads" list with status badges (Pending review / Reviewed / Archived).
+- [x] Upload detail page `/uploads/:id`: inline `<video>` player + coach summary (empty-state until reviewed).
+- [x] Dropdown to attach an upload to a recent booking (from the dashboard's own bookings).
 
 ### 4.5.4 Admin UI
-- [ ] Pending-review count badge on `AdminDashboardPage`.
-- [ ] Review queue at `/admin/uploads`: list with athlete name, lesson context (if attached), upload date, status filter.
-- [ ] Review page at `/admin/uploads/:id`: video player + summary textarea + status dropdown + save.
-- [ ] From an athlete's profile (Phase 4.2), link to that athlete's upload history.
+- [x] Pending-review count badge on `AdminDashboardPage` (new "Video review" quick-action card).
+- [x] Review queue at `/admin/uploads`: list with athlete name, lesson context, upload date, status filter (+ `?clientId=` scoping).
+- [x] Review page at `/admin/uploads/:id`: video player + summary textarea + status dropdown + save (+ delete).
+- [x] From an athlete's profile (Phase 4.2), "Uploads" link → `/admin/uploads?clientId=…`.
 
-**Exit criteria:** A client uploads a video from the dashboard, it lands in the coach's review queue, the coach saves a summary, the client sees that summary on their own upload page.
+**Exit criteria:** A client uploads a video from the dashboard, it lands in the coach's review queue, the coach saves a summary, the client sees that summary on their own upload page. ✅ *(Verified in-browser 2026-05-29.)*
 
 ---
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, NotebookPen, ShieldCheck, ShieldAlert, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Film, NotebookPen, ShieldCheck, ShieldAlert, Trash2 } from "lucide-react";
 import {
   ApiError,
   deleteSessionNote,
@@ -156,15 +156,24 @@ function ProfileCard({
             {client.profile?.phone ? ` · ${client.profile.phone}` : ""}
           </p>
         </div>
-        {!editing ? (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="focus-ring rounded border border-ink/15 px-3 py-1.5 text-sm font-bold text-ink transition hover:bg-chalk"
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/admin/uploads?clientId=${client.id}`}
+            className="focus-ring inline-flex items-center gap-1.5 rounded border border-ink/15 px-3 py-1.5 text-sm font-bold text-ink transition hover:bg-chalk"
           >
-            Edit
-          </button>
-        ) : null}
+            <Film size={15} />
+            Uploads
+          </Link>
+          {!editing ? (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="focus-ring rounded border border-ink/15 px-3 py-1.5 text-sm font-bold text-ink transition hover:bg-chalk"
+            >
+              Edit
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Waiver + consent flags */}

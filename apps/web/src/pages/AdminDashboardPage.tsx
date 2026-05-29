@@ -6,6 +6,7 @@ import {
   CalendarX,
   CheckCircle2,
   DollarSign,
+  Film,
   Link2,
   UsersRound,
   Video
@@ -14,6 +15,7 @@ import {
   ApiError,
   disconnectCalendar,
   fetchAdminBookings,
+  fetchAdminUploads,
   fetchCalendarStatus,
   startCalendarConnect,
   type AdminBookingRow,
@@ -121,6 +123,8 @@ export function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [pendingUploads, setPendingUploads] = useState(0);
+
   const [calendarStatus, setCalendarStatus] = useState<CalendarStatus | null>(null);
   const [isCalendarLoading, setIsCalendarLoading] = useState(true);
   const [isCalendarWorking, setIsCalendarWorking] = useState(false);
@@ -153,6 +157,22 @@ export function AdminDashboardPage() {
       isMounted = false;
     };
   }, [ranges]);
+
+  // Pending video-review count for the quick-action badge. Best-effort: a
+  // failure just leaves the badge hidden rather than blocking the dashboard.
+  useEffect(() => {
+    let isMounted = true;
+    fetchAdminUploads({ status: "pending_review" })
+      .then((rows) => {
+        if (isMounted) setPendingUploads(rows.length);
+      })
+      .catch(() => {
+        /* badge stays at 0 */
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const loadCalendarStatus = useCallback(async () => {
     setIsCalendarLoading(true);
@@ -387,6 +407,13 @@ export function AdminDashboardPage() {
             title="Resources"
             description="Upload drills, videos, PDFs, and links."
           />
+          <QuickAction
+            to="/admin/uploads"
+            icon={Film}
+            title="Video review"
+            description="Watch athlete clips and leave feedback."
+            badge={pendingUploads}
+          />
         </div>
       </section>
     </main>
@@ -557,19 +584,29 @@ function QuickAction({
   to,
   icon: Icon,
   title,
-  description
+  description,
+  badge
 }: {
   to: string;
   icon: typeof CalendarRange;
   title: string;
   description: string;
+  /** Optional count pill (e.g. pending video reviews). Hidden when 0/undefined. */
+  badge?: number;
 }) {
   return (
     <Link
       to={to}
       className="focus-ring group rounded bg-white p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-md"
     >
-      <Icon className="text-field transition group-hover:text-clay" size={26} />
+      <div className="flex items-center justify-between">
+        <Icon className="text-field transition group-hover:text-clay" size={26} />
+        {badge ? (
+          <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-clay px-2 py-0.5 text-xs font-black text-white">
+            {badge}
+          </span>
+        ) : null}
+      </div>
       <h3 className="mt-4 text-lg font-black">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-ink/65">{description}</p>
     </Link>

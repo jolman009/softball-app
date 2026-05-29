@@ -7,6 +7,7 @@ import { adminRouter } from "./routes/admin.js";
 import { adminAvailabilityRouter } from "./routes/adminAvailability.js";
 import { adminClientsRouter } from "./routes/adminClients.js";
 import { adminResourcesRouter } from "./routes/adminResources.js";
+import { adminUploadsRouter } from "./routes/adminUploads.js";
 import { authRouter } from "./routes/auth.js";
 import { availabilityRouter } from "./routes/availability.js";
 import { bookingsRouter } from "./routes/bookings.js";
@@ -43,6 +44,7 @@ export function createApp() {
   app.use("/api/admin/availability", adminAvailabilityRouter);
   app.use("/api/admin/clients", adminClientsRouter);
   app.use("/api/admin/resources", adminResourcesRouter);
+  app.use("/api/admin/uploads", adminUploadsRouter);
   app.use("/api/admin", adminRouter);
 
   app.use(notFound);

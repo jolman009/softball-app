@@ -7,9 +7,12 @@ import { AdminClientDetailPage } from "./pages/AdminClientDetailPage";
 import { AdminClientsPage } from "./pages/AdminClientsPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AdminResourcesPage } from "./pages/AdminResourcesPage";
+import { AdminUploadReviewPage } from "./pages/AdminUploadReviewPage";
+import { AdminUploadsPage } from "./pages/AdminUploadsPage";
 import { BookingPage } from "./pages/BookingPage";
 import { ClientDashboardPage } from "./pages/ClientDashboardPage";
 import { ClientResourcesPage } from "./pages/ClientResourcesPage";
+import { ClientUploadDetailPage } from "./pages/ClientUploadDetailPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -28,6 +31,7 @@ export function App() {
           <Route path="dashboard" element={<ClientDashboardPage />} />
           <Route path="resources" element={<ClientResourcesPage />} />
           <Route path="resources/:id" element={<ResourceDetailPage />} />
+          <Route path="uploads/:id" element={<ClientUploadDetailPage />} />
         </Route>
         <Route element={<ProtectedRoute roles={["admin"]} />}>
           <Route path="admin" element={<AdminDashboardPage />} />
@@ -36,6 +40,8 @@ export function App() {
           <Route path="admin/clients" element={<AdminClientsPage />} />
           <Route path="admin/clients/:id" element={<AdminClientDetailPage />} />
           <Route path="admin/resources" element={<AdminResourcesPage />} />
+          <Route path="admin/uploads" element={<AdminUploadsPage />} />
+          <Route path="admin/uploads/:id" element={<AdminUploadReviewPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>

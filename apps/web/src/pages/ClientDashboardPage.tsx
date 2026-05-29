@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, CalendarPlus, Clock3, Hourglass, Library } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { fetchMyBookings, type BookingStatus, type BookingSummary } from "@/lib/api";
+import { ClientUploadsSection } from "@/components/ClientUploadsSection";
 
 function formatLongDate(iso: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -161,6 +162,9 @@ export function ClientDashboardPage() {
           )}
         </div>
       </section>
+
+      {/* Video uploads (Phase 4.5) */}
+      <ClientUploadsSection bookings={[...upcoming, ...past]} />
     </main>
   );
 }
