@@ -364,6 +364,12 @@ export function AdminDashboardPage() {
         <h2 className="text-2xl font-black">Quick actions</h2>
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <QuickAction
+            to="/admin/bookings"
+            icon={CalendarClock}
+            title="Bookings"
+            description="Reschedule, cancel, complete, or add a walk-in."
+          />
+          <QuickAction
             to="/admin/availability"
             icon={CalendarRange}
             title="Manage availability"

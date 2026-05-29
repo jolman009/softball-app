@@ -3,7 +3,7 @@
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
 > **Last updated:** 2026-05-28 (Phase 4.1 landed + hardened — admin can CRUD weekly windows, exceptions, and booking rules from `/admin/availability`; engine reads `coach_settings` instead of constants; weekly windows now have an overlap guard (gist exclusion constraint + server-side 409 pre-check), verified end-to-end and applied to the live DB.)
-> **Current phase:** Phase 4.2 — Admin: clients & session notes ✅ shipped; next up Phase 4.3 (bookings management: reschedule/cancel/complete + manual booking).
+> **Current phase:** Phase 4.3 — Admin: bookings management ✅ shipped (+ Phase 3.3 calendar update/delete now wired); next up Phase 4.4 (resource library).
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -23,7 +23,7 @@
 | Client dashboard | ✅ Done | Real upcoming/past from `/api/me/bookings` (Phase 2.4) |
 | Admin dashboard | ✅ Done | Today's schedule + week/month/revenue metrics + Phase 4 quick links (Phase 2.5) |
 | Google sign-in | ✅ Done | Wired into LoginPage + BookingPage modal; OAuth resume on booking flow (Phase 2.6) |
-| Google Calendar integration | 🟡 Partial | OAuth (3.1) ✅ + FreeBusy (3.2) ✅ + create-event-on-confirm (3.3 partial) ✅ — update/delete service ready, wired in Phase 4.3 |
+| Google Calendar integration | ✅ Done | OAuth (3.1) + FreeBusy (3.2) + event create-on-confirm, update-on-reschedule, delete-on-cancel (3.3, wired in 4.3) |
 | Resource library (coach → client) | 🔴 Not started | Tables exist, no UI · Phase 4 |
 | Client video uploads & review (client → coach) | 🔴 Not started | Phase 4.5 |
 | Email confirmations | 🔴 Not started | |
@@ -61,7 +61,7 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 
 - [x] `googleCalendar.service.ts`: `createEvent(booking)`, `updateEvent(booking)`, `deleteEvent(booking)`. *(All three exported; share a `withAccessToken` helper that degrades to `null`/`false` on any error so a Google outage never rolls back a booking. Each successful call touches `calendar_connections.last_synced_at`.)*
 - [x] On `POST /bookings/:id/confirm`, create the event and persist `bookings.google_calendar_event_id`. *(Event title is `"{TrainingType} with {AthleteName}"` (falls back to `"{TrainingType} session"` for admin walk-ins; appends `other_training_text` for the `Other` type). Description carries the booking's notes. Calendar failure is logged + swallowed; the booking is still confirmed.)*
-- [ ] On cancel / reschedule (Phase 4.3 wires the actions), update or delete the event.
+- [x] On cancel / reschedule (Phase 4.3 wires the actions), update or delete the event. *(Wired 2026-05-29 in `admin.ts`: reschedule → `updateEvent` (or `createEvent` if the booking never had one); cancel → `deleteEvent` + clears the link. Best-effort/failure-tolerant as ever.)*
 
 **Phase 3 exit criteria:** A "busy" block placed directly on the coach's Google Calendar disappears from the public slot list within one refresh, and a confirmed booking shows up on the coach's calendar.
 
@@ -87,9 +87,11 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 
 > **Note (2026-05-28):** All verified in-browser end-to-end (list/search, profile edit + waiver toggle, notes create + persist). No new migration — uses existing `clients` / `session_notes` tables. `/admin/resources` remains a placeholder until Phase 4.4.
 
-### 4.3 Admin: bookings management
-- [ ] Reschedule / cancel / mark-complete / no-show actions.
-- [ ] Manual booking creation form.
+### 4.3 Admin: bookings management — *shipped 2026-05-29*
+- [x] Reschedule / cancel / mark-complete / no-show actions. *(`/admin/bookings` — range/status-filtered list with per-row actions. Backend POST `/api/admin/bookings/:id/{cancel,complete,no-show,reschedule}` in `admin.ts`; the `log_booking_status_change` trigger writes audit rows automatically. Cancel deletes the calendar event + clears `google_calendar_event_id`; reschedule overlap-checks via the gist constraint → 409 then `updateEvent`. Light transition guard blocks acting on already-cancelled bookings.)*
+- [x] Manual booking creation form. *(POST `/api/admin/bookings` inserts straight to `confirmed` with optional client (walk-in) + auto `createEvent`; end derived from the training type's default duration. UI form on the same page.)*
+
+> **Note (2026-05-29):** All actions verified in-browser end-to-end (create → reschedule → complete; second booking → cancel with reason prompt; status filters). Admins may book outside availability windows and without a client; the overlap constraint is the only hard guard. No new migration.
 
 ### 4.4 Resource library
 - [ ] Admin upload screen → Supabase Storage (use the private bucket from the migration).

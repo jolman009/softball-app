@@ -516,3 +516,55 @@ export async function saveSessionNote(bookingId: string, input: SessionNoteInput
 export async function deleteSessionNote(bookingId: string): Promise<void> {
   await apiFetch<void>(`/admin/bookings/${bookingId}/notes`, { method: "DELETE", auth: true });
 }
+
+// ============================================================
+// Admin: bookings management (Phase 4.3)
+// ============================================================
+
+/** Cancels a booking; removes the mirrored calendar event. */
+export async function cancelBooking(id: string, reason?: string): Promise<void> {
+  await apiFetch<void>(`/admin/bookings/${id}/cancel`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ reason: reason?.trim() || undefined })
+  });
+}
+
+/** Marks a booking completed. */
+export async function completeBooking(id: string): Promise<void> {
+  await apiFetch<void>(`/admin/bookings/${id}/complete`, { method: "POST", auth: true });
+}
+
+/** Marks a booking as a no-show. */
+export async function markNoShow(id: string): Promise<void> {
+  await apiFetch<void>(`/admin/bookings/${id}/no-show`, { method: "POST", auth: true });
+}
+
+/** Moves a booking to a new time; re-syncs the calendar event. */
+export async function rescheduleBooking(
+  id: string,
+  range: { startsAt: string; endsAt: string }
+): Promise<void> {
+  await apiFetch<void>(`/admin/bookings/${id}/reschedule`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(range)
+  });
+}
+
+export type ManualBookingInput = {
+  clientId?: string | null;
+  trainingTypeId: string;
+  startsAt: string;
+  endsAt: string;
+  notes?: string;
+};
+
+/** Creates a confirmed booking directly (coach walk-in / phone booking). */
+export async function createManualBooking(input: ManualBookingInput): Promise<void> {
+  await apiFetch<void>("/admin/bookings", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(input)
+  });
+}

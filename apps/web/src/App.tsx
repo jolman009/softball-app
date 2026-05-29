@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminAvailabilityPage } from "./pages/AdminAvailabilityPage";
+import { AdminBookingsPage } from "./pages/AdminBookingsPage";
 import { AdminClientDetailPage } from "./pages/AdminClientDetailPage";
 import { AdminClientsPage } from "./pages/AdminClientsPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
@@ -27,6 +28,7 @@ export function App() {
         <Route element={<ProtectedRoute roles={["admin"]} />}>
           <Route path="admin" element={<AdminDashboardPage />} />
           <Route path="admin/availability" element={<AdminAvailabilityPage />} />
+          <Route path="admin/bookings" element={<AdminBookingsPage />} />
           <Route path="admin/clients" element={<AdminClientsPage />} />
           <Route path="admin/clients/:id" element={<AdminClientDetailPage />} />
           <Route
