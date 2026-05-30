@@ -824,3 +824,48 @@ export async function updateAdminUpload(id: string, patch: UploadReviewPatch): P
 export async function deleteAdminUpload(id: string): Promise<void> {
   await apiFetch<void>(`/admin/uploads/${id}`, { method: "DELETE", auth: true });
 }
+
+// ============================================================
+// Admin: booking audit log (Phase 5)
+// ============================================================
+
+export type AuditAction =
+  | "created"
+  | "confirmed"
+  | "cancelled"
+  | "rescheduled"
+  | "completed"
+  | "no_show"
+  | "updated"
+  | "calendar_synced";
+
+export type AuditLogRow = {
+  id: string;
+  booking_id: string;
+  action: AuditAction;
+  previous_status: BookingStatus | null;
+  new_status: BookingStatus | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  actor: { id: string; first_name: string | null; last_name: string | null; email: string } | null;
+  booking: {
+    id: string;
+    starts_at: string;
+    training_type: { name: string } | null;
+    client: { id: string; athlete_name: string } | null;
+  } | null;
+};
+
+export async function fetchAuditLogs(query?: {
+  action?: AuditAction;
+  limit?: number;
+  offset?: number;
+}): Promise<AuditLogRow[]> {
+  const params = new URLSearchParams();
+  if (query?.action) params.set("action", query.action);
+  if (query?.limit != null) params.set("limit", String(query.limit));
+  if (query?.offset != null) params.set("offset", String(query.offset));
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const data = await apiFetch<{ logs: AuditLogRow[] }>(`/admin/audit-logs${suffix}`, { auth: true });
+  return data.logs;
+}

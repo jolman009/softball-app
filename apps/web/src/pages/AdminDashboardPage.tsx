@@ -8,6 +8,7 @@ import {
   DollarSign,
   Film,
   Link2,
+  ScrollText,
   UsersRound,
   Video
 } from "lucide-react";
@@ -413,6 +414,12 @@ export function AdminDashboardPage() {
             title="Video review"
             description="Watch athlete clips and leave feedback."
             badge={pendingUploads}
+          />
+          <QuickAction
+            to="/admin/audit"
+            icon={ScrollText}
+            title="Audit log"
+            description="Booking history — who changed what, and when."
           />
         </div>
       </section>

@@ -64,6 +64,58 @@ adminRouter.get("/bookings", async (req, res, next) => {
 });
 
 // ============================================================
+// Audit log review (Phase 5) — read-only view over booking_audit_logs
+// ============================================================
+
+const AUDIT_ACTIONS = [
+  "created",
+  "confirmed",
+  "cancelled",
+  "rescheduled",
+  "completed",
+  "no_show",
+  "updated",
+  "calendar_synced"
+] as const;
+
+const auditQuerySchema = z.object({
+  action: z.enum(AUDIT_ACTIONS).optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+  offset: z.coerce.number().int().min(0).default(0)
+});
+
+/**
+ * Recent booking audit-trail rows, newest first, with the actor and booking
+ * context joined. The `log_booking_status_change` trigger writes these; status
+ * changes made through this API (service-role) have a null `actor_id` because
+ * there is no `auth.uid()` server-side — the UI renders those as "System".
+ */
+adminRouter.get("/audit-logs", async (req, res, next) => {
+  try {
+    const query = auditQuerySchema.parse(req.query);
+
+    let q = supabaseAdmin
+      .from("booking_audit_logs")
+      .select(
+        "id, booking_id, action, previous_status, new_status, metadata, created_at, " +
+          "actor:profiles(id, first_name, last_name, email), " +
+          "booking:bookings(id, starts_at, training_type:training_types(name), client:clients(id, athlete_name))"
+      )
+      .order("created_at", { ascending: false })
+      .range(query.offset, query.offset + query.limit - 1);
+
+    if (query.action) q = q.eq("action", query.action);
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    res.json({ logs: data ?? [] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================
 // Session notes (Phase 4.2) — one row per booking
 // ============================================================
 

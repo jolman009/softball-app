@@ -5,6 +5,7 @@ import { AdminAvailabilityPage } from "./pages/AdminAvailabilityPage";
 import { AdminBookingsPage } from "./pages/AdminBookingsPage";
 import { AdminClientDetailPage } from "./pages/AdminClientDetailPage";
 import { AdminClientsPage } from "./pages/AdminClientsPage";
+import { AdminAuditLogPage } from "./pages/AdminAuditLogPage";
 import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AdminResourcesPage } from "./pages/AdminResourcesPage";
 import { AdminUploadReviewPage } from "./pages/AdminUploadReviewPage";
@@ -42,6 +43,7 @@ export function App() {
           <Route path="admin/resources" element={<AdminResourcesPage />} />
           <Route path="admin/uploads" element={<AdminUploadsPage />} />
           <Route path="admin/uploads/:id" element={<AdminUploadReviewPage />} />
+          <Route path="admin/audit" element={<AdminAuditLogPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>

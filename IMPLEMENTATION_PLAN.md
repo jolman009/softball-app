@@ -3,7 +3,7 @@
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
 > **Last updated:** 2026-05-29 (Phase 5 started — rate limiting shipped on `/api/auth/*` + `/api/bookings` via `express-rate-limit`, verified. Phase 4 complete.)
-> **Current phase:** Phase 5 — Production hardening 🟡 in progress. Done: rate limiting. Next candidates: transactional email (needs provider + key), audit-log review screen, cancellation policy + waiver gate, Sentry/PostHog (need keys), a11y pass.
+> **Current phase:** Phase 5 — Production hardening 🟡 in progress. Done: rate limiting, admin audit-log screen. Next candidates: cancellation policy + waiver gate (code-only), transactional email / Sentry / PostHog (need keys), a11y pass, backup verification (dashboard).
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -153,7 +153,7 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 - [x] Rate limiting on `/api/auth/*` and `/api/bookings`. *(2026-05-29 — `express-rate-limit` v8; `middleware/rateLimit.ts`: auth limiter 20/15 min, bookings limiter 30/15 min, keyed on `req.ip`, JSON 429 `{ error }` + `draft-7` `RateLimit` headers. New `TRUST_PROXY` env (default 0; set to 1 in prod behind a proxy) drives Express `trust proxy` so keying uses the real client IP. Verified: auth 429s on the 21st request; `/api/bookings` carries `RateLimit-Policy: 30;w=900`. Note: login/signup run against Supabase Auth directly, not this API, so the high-value guard is `/api/bookings` hold creation.)*
 - [ ] Sentry on web + api.
 - [ ] PostHog booking-funnel events.
-- [ ] Audit-log review screen for admin (`booking_audit_logs`).
+- [x] Audit-log review screen for admin (`booking_audit_logs`). *(2026-05-29 — `GET /api/admin/audit-logs?action=&limit=&offset=` joins actor profile + booking context; new `/admin/audit` page: action filter chips, newest-first list with action badge, `prev → new` status transition, athlete link (or "walk-in"), actor name, "Load more" paging. Dashboard "Audit log" quick action added. Note: status changes made through the admin API run as service-role (no `auth.uid()`), so those rows have a null actor and render as "System"; only `created` rows carry an actor (`created_by`). Verified in-browser against real history + the Created filter.)*
 - [ ] Accessibility pass: keyboard nav, focus rings, ARIA on the booking modal, color-contrast check on the navy/yellow combo.
 - [ ] Backup verification: confirm Supabase point-in-time recovery is enabled on the production project.
 - [ ] Cancellation policy enforcement (e.g., no client-side cancel within 12 h).
