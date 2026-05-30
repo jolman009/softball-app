@@ -444,7 +444,7 @@ function MetricCard({
     <div className="rounded bg-white p-5 shadow-soft">
       <div className="flex items-center gap-3">
         <Icon className={accent} size={22} />
-        <p className="text-sm font-bold uppercase tracking-[0.14em] text-ink/55">{label}</p>
+        <p className="text-sm font-bold uppercase tracking-[0.14em] text-ink/65">{label}</p>
       </div>
       <p className="mt-3 text-4xl font-black">{value}</p>
       <p className="mt-1 text-sm text-ink/60">{sub}</p>
@@ -507,13 +507,13 @@ function CalendarConnectionCard({
           <div
             className={[
               "flex h-11 w-11 shrink-0 items-center justify-center rounded",
-              connected ? "bg-field/10 text-field" : "bg-chalk text-ink/55"
+              connected ? "bg-field/10 text-field" : "bg-chalk text-ink/65"
             ].join(" ")}
           >
             {connected ? <CheckCircle2 size={22} /> : <Link2 size={22} />}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/45">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/65">
               Google Calendar
             </p>
             <h3 className="mt-1 text-lg font-black">

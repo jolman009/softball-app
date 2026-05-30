@@ -32,7 +32,7 @@ export function ResourceDetailPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <Link
         to="/resources"
-        className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+        className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
       >
         <ArrowLeft size={14} />
         Back to resources
@@ -110,7 +110,7 @@ function ResourceBody({ resource }: { resource: Resource }) {
           className="focus-ring flex items-center justify-between gap-3 rounded bg-white p-5 shadow-soft transition hover:shadow-md"
         >
           <span className="min-w-0">
-            <span className="block text-sm font-bold uppercase tracking-wide text-ink/45">Link</span>
+            <span className="block text-sm font-bold uppercase tracking-wide text-ink/65">Link</span>
             <span className="mt-1 block truncate font-bold text-field">{resource.external_url}</span>
           </span>
           <ExternalLink className="shrink-0 text-field" size={20} />

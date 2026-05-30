@@ -220,7 +220,7 @@ function UpcomingCard({ booking, onCancelled }: { booking: BookingSummary; onCan
     <li className="rounded bg-white p-5 shadow-soft">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/45">
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/65">
             {formatLongDate(booking.starts_at)}
           </p>
           <h3 className="mt-1 truncate text-xl font-black">{trainingLabel}</h3>
@@ -259,7 +259,7 @@ function UpcomingCard({ booking, onCancelled }: { booking: BookingSummary; onCan
       {canCancel ? (
         <div className="mt-4 flex items-center justify-end">
           {withinCutoff ? (
-            <p className="text-xs font-semibold text-ink/45">
+            <p className="text-xs font-semibold text-ink/65">
               Within {CANCELLATION_CUTOFF_HOURS}h — contact your coach to cancel.
             </p>
           ) : (

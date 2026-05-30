@@ -104,7 +104,7 @@ export function AdminUploadReviewPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <Link
         to="/admin/uploads"
-        className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+        className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
       >
         <ArrowLeft size={14} />
         Back to review queue
@@ -151,10 +151,10 @@ export function AdminUploadReviewPage() {
             <h2 className="text-2xl font-black">Your feedback</h2>
 
             <label
-              className="mt-4 block text-xs font-bold uppercase tracking-wide text-ink/55"
+              className="mt-4 block text-xs font-bold uppercase tracking-wide text-ink/65"
               htmlFor="review-summary"
             >
-              Summary <span className="font-semibold normal-case text-ink/40">(the athlete sees this)</span>
+              Summary <span className="font-semibold normal-case text-ink/65">(the athlete sees this)</span>
             </label>
             <textarea
               id="review-summary"
@@ -168,7 +168,7 @@ export function AdminUploadReviewPage() {
             />
 
             <label
-              className="mt-4 block text-xs font-bold uppercase tracking-wide text-ink/55"
+              className="mt-4 block text-xs font-bold uppercase tracking-wide text-ink/65"
               htmlFor="review-status"
             >
               Status

@@ -129,7 +129,7 @@ export function AdminAuditLogPage() {
       <header className="flex flex-col gap-1">
         <Link
           to="/admin"
-          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
         >
           <ArrowLeft size={14} />
           Back to dashboard
@@ -226,10 +226,10 @@ function AuditRow({ log }: { log: AuditLogRow }) {
                 </Link>
               </>
             ) : (
-              <span className="font-semibold text-ink/45"> · walk-in</span>
+              <span className="font-semibold text-ink/65"> · walk-in</span>
             )}
           </p>
-          <p className="truncate text-sm text-ink/55">
+          <p className="truncate text-sm text-ink/65">
             {showTransition ? (
               <>
                 {STATUS_COPY[log.previous_status!]} → {STATUS_COPY[log.new_status!]} ·{" "}

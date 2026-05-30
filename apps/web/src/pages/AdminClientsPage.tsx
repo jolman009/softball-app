@@ -30,7 +30,7 @@ function skillBadge(level: SkillLevel | null): string {
     case "beginner":
       return "bg-chalk text-ink/70";
     default:
-      return "bg-ink/5 text-ink/45";
+      return "bg-ink/5 text-ink/65";
   }
 }
 
@@ -69,7 +69,7 @@ export function AdminClientsPage() {
       <header className="flex flex-col gap-1">
         <Link
           to="/admin"
-          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
         >
           <ArrowLeft size={14} />
           Back to dashboard
@@ -151,13 +151,13 @@ export function AdminClientsPage() {
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-bold">{c.athlete_name}</p>
-                        <p className="truncate text-sm text-ink/55">
+                        <p className="truncate text-sm text-ink/65">
                           {c.guardian_name ? `${c.guardian_name} · ` : ""}
                           {c.profile?.email ?? "no email on file"}
                         </p>
                       </div>
                     </div>
-                    <span className="text-sm font-semibold text-ink/55">
+                    <span className="text-sm font-semibold text-ink/65">
                       {c.session_count} {c.session_count === 1 ? "session" : "sessions"}
                     </span>
                   </Link>

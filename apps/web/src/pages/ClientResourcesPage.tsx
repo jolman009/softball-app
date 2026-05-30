@@ -69,7 +69,7 @@ export function ClientResourcesPage() {
       <header className="flex flex-col gap-1">
         <Link
           to="/dashboard"
-          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
         >
           <ArrowLeft size={14} />
           Back to dashboard
@@ -101,7 +101,7 @@ export function ClientResourcesPage() {
           <div className="flex flex-col gap-8">
             {groups.map(([category, items]) => (
               <div key={category}>
-                <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-ink/45">{category}</h2>
+                <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-ink/65">{category}</h2>
                 <ul className="mt-3 grid gap-4 sm:grid-cols-2">
                   {items.map((r) => (
                     <ResourceCard key={r.id} resource={r} />
@@ -128,7 +128,7 @@ function ResourceCard({ resource }: { resource: Resource }) {
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-chalk text-field">
             <Icon size={18} />
           </span>
-          <span className="text-xs font-bold uppercase tracking-wide text-ink/45">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink/65">
             {TYPE_LABEL[resource.resource_type]}
           </span>
         </div>

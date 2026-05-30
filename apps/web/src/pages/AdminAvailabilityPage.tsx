@@ -65,7 +65,7 @@ export function AdminAvailabilityPage() {
       <header className="flex flex-col gap-1">
         <Link
           to="/admin"
-          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
         >
           <ArrowLeft size={14} />
           Back to dashboard
@@ -200,7 +200,7 @@ function WindowsSection() {
                       "focus-ring rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide transition",
                       window.active
                         ? "bg-field/15 text-field hover:bg-field/25"
-                        : "bg-chalk text-ink/55 hover:bg-ink/10"
+                        : "bg-chalk text-ink/65 hover:bg-ink/10"
                     ].join(" ")}
                   >
                     {window.active ? "Active" : "Paused"}
@@ -209,7 +209,7 @@ function WindowsSection() {
                     type="button"
                     onClick={() => void handleDelete(window)}
                     aria-label="Delete window"
-                    className="focus-ring rounded p-1.5 text-ink/45 transition hover:bg-clay/10 hover:text-clay"
+                    className="focus-ring rounded p-1.5 text-ink/65 transition hover:bg-clay/10 hover:text-clay"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -276,7 +276,7 @@ function WindowForm({
       onSubmit={handleSubmit}
       className="grid gap-3 rounded bg-white p-4 shadow-soft sm:grid-cols-[1fr_1fr_1fr_1.4fr_auto]"
     >
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Day
         <select
           value={day}
@@ -290,7 +290,7 @@ function WindowForm({
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Start
         <input
           type="time"
@@ -300,7 +300,7 @@ function WindowForm({
           className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         End
         <input
           type="time"
@@ -310,7 +310,7 @@ function WindowForm({
           className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Timezone
         <input
           type="text"
@@ -444,7 +444,7 @@ function ExceptionsSection() {
                   type="button"
                   onClick={() => void handleDelete(ex)}
                   aria-label="Delete exception"
-                  className="focus-ring rounded p-1.5 text-ink/45 transition hover:bg-clay/10 hover:text-clay"
+                  className="focus-ring rounded p-1.5 text-ink/65 transition hover:bg-clay/10 hover:text-clay"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -525,7 +525,7 @@ function ExceptionForm({
       onSubmit={handleSubmit}
       className="grid gap-3 rounded bg-white p-4 shadow-soft sm:grid-cols-[1fr_1.4fr_1.4fr_2fr_auto]"
     >
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Type
         <select
           value={type}
@@ -536,7 +536,7 @@ function ExceptionForm({
           <option value="special_opening">Special opening</option>
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Starts
         <input
           type="datetime-local"
@@ -546,7 +546,7 @@ function ExceptionForm({
           className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Ends
         <input
           type="datetime-local"
@@ -556,7 +556,7 @@ function ExceptionForm({
           className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Reason (optional)
         <input
           type="text"
@@ -753,7 +753,7 @@ function SettingField({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs font-bold uppercase tracking-wide text-ink/55">{label}</span>
+      <span className="text-xs font-bold uppercase tracking-wide text-ink/65">{label}</span>
       <span className="flex items-center gap-2">
         <input
           type="number"

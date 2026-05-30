@@ -77,7 +77,7 @@ export function AdminUploadsPage() {
       <header className="flex flex-col gap-1">
         <Link
           to="/admin"
-          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
         >
           <ArrowLeft size={14} />
           Back to dashboard
@@ -136,7 +136,7 @@ export function AdminUploadsPage() {
                       </span>
                       <div className="min-w-0">
                         <p className="truncate font-bold">{u.title}</p>
-                        <p className="truncate text-sm text-ink/55">
+                        <p className="truncate text-sm text-ink/65">
                           {u.client?.athlete_name ?? "Unknown athlete"} · {formatDate(u.created_at)}
                           {u.booking?.training_type ? ` · ${u.booking.training_type.name}` : ""}
                         </p>

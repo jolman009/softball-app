@@ -110,7 +110,7 @@ export function AdminResourcesPage() {
       <header className="flex flex-col gap-1">
         <Link
           to="/admin"
-          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
         >
           <ArrowLeft size={14} />
           Back to dashboard
@@ -169,7 +169,7 @@ export function AdminResourcesPage() {
 const SELECT_CLASS =
   "focus-ring w-full rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-ink";
 const INPUT_CLASS = SELECT_CLASS;
-const LABEL_CLASS = "block text-xs font-bold uppercase tracking-wide text-ink/55";
+const LABEL_CLASS = "block text-xs font-bold uppercase tracking-wide text-ink/65";
 
 function ResourceForm({
   categories,
@@ -352,7 +352,7 @@ function ResourceForm({
 
         <div className="sm:col-span-2">
           <label className={LABEL_CLASS} htmlFor="resource-description">
-            Description <span className="font-semibold normal-case text-ink/40">(optional)</span>
+            Description <span className="font-semibold normal-case text-ink/65">(optional)</span>
           </label>
           <textarea
             id="resource-description"
@@ -402,7 +402,7 @@ function ResourceForm({
 
         <div>
           <label className={LABEL_CLASS} htmlFor="resource-session">
-            Session type <span className="font-semibold normal-case text-ink/40">(optional)</span>
+            Session type <span className="font-semibold normal-case text-ink/65">(optional)</span>
           </label>
           <select
             id="resource-session"
@@ -516,7 +516,7 @@ function ResourceRow({
         </span>
         <div className="min-w-0">
           <p className="truncate font-bold">{resource.title}</p>
-          <p className="truncate text-sm text-ink/55">
+          <p className="truncate text-sm text-ink/65">
             {resource.category?.name ?? "Uncategorized"} · {resource.skill_level}
             {resource.session_type ? ` · ${resource.session_type}` : ""}
           </p>
@@ -672,7 +672,7 @@ function ResourceEditForm({
 
       <div className="sm:col-span-2">
         <label className={LABEL_CLASS} htmlFor={`edit-description-${resource.id}`}>
-          Description <span className="font-semibold normal-case text-ink/40">(optional)</span>
+          Description <span className="font-semibold normal-case text-ink/65">(optional)</span>
         </label>
         <textarea
           id={`edit-description-${resource.id}`}
@@ -721,7 +721,7 @@ function ResourceEditForm({
 
       <div>
         <label className={LABEL_CLASS} htmlFor={`edit-session-${resource.id}`}>
-          Session type <span className="font-semibold normal-case text-ink/40">(optional)</span>
+          Session type <span className="font-semibold normal-case text-ink/65">(optional)</span>
         </label>
         <select
           id={`edit-session-${resource.id}`}

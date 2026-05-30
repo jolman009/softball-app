@@ -59,7 +59,7 @@ export function ClientUploadDetailPage() {
     <main className="mx-auto max-w-3xl px-4 py-12">
       <Link
         to="/dashboard"
-        className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+        className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
       >
         <ArrowLeft size={14} />
         Back to dashboard

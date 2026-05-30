@@ -145,7 +145,7 @@ export function LoginPage() {
               <GoogleIcon />
               Continue with Google
             </button>
-            <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-ink/45">
+            <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-ink/65">
               <span className="h-px flex-1 bg-ink/10" />
               or use email
               <span className="h-px flex-1 bg-ink/10" />
@@ -156,7 +156,7 @@ export function LoginPage() {
         <form className={mode === "reset-password" ? "mt-6" : ""} onSubmit={handleSubmit}>
           {mode === "create-account" ? (
             <>
-              <p className="text-sm font-bold uppercase tracking-[0.14em] text-ink/55">Account type</p>
+              <p className="text-sm font-bold uppercase tracking-[0.14em] text-ink/65">Account type</p>
               <div className="mt-2 grid grid-cols-2 rounded bg-chalk p-1">
                 {[
                   { id: "athlete" as AccountType, label: "Athlete or parent" },

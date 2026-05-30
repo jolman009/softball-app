@@ -72,7 +72,7 @@ export function AdminClientDetailPage() {
     <main className="mx-auto max-w-4xl px-4 py-12">
       <Link
         to="/admin/clients"
-        className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+        className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
       >
         <ArrowLeft size={14} />
         Back to clients
@@ -218,7 +218,7 @@ function ProfileCard({
             value={draft.athlete_age?.toString() ?? ""}
             onChange={(v) => field("athlete_age", v ? Number(v) : null)}
           />
-          <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+          <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
             Skill level
             <select
               value={draft.skill_level ?? ""}
@@ -319,7 +319,7 @@ function Flag({ on, onLabel, offLabel }: { on: boolean; onLabel: string; offLabe
 function Detail({ label, value, full }: { label: string; value: string; full?: boolean }) {
   return (
     <div className={full ? "sm:col-span-2" : undefined}>
-      <dt className="text-xs font-bold uppercase tracking-wide text-ink/45">{label}</dt>
+      <dt className="text-xs font-bold uppercase tracking-wide text-ink/65">{label}</dt>
       <dd className="mt-0.5 whitespace-pre-wrap font-semibold text-ink/85">{value}</dd>
     </div>
   );
@@ -339,7 +339,7 @@ function EditField({
   textarea?: boolean;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+    <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
       {label}
       {textarea ? (
         <textarea
@@ -431,7 +431,7 @@ function BookingRow({ booking }: { booking: AdminClientBooking }) {
           </span>
           <div className="min-w-0">
             <p className="truncate font-bold">{booking.training_type?.name ?? "Session"}</p>
-            <p className="truncate text-sm text-ink/55">{formatDateTime(booking.starts_at)}</p>
+            <p className="truncate text-sm text-ink/65">{formatDateTime(booking.starts_at)}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -526,7 +526,7 @@ function SessionNotesEditor({
   }
 
   if (isLoading) {
-    return <p className="bg-chalk/40 px-4 py-4 text-sm font-semibold text-ink/55">Loading notes…</p>;
+    return <p className="bg-chalk/40 px-4 py-4 text-sm font-semibold text-ink/65">Loading notes…</p>;
   }
 
   return (
@@ -595,8 +595,8 @@ function NoteField({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs font-bold uppercase tracking-wide text-ink/55">{label}</span>
-      <span className="text-xs text-ink/45">{hint}</span>
+      <span className="text-xs font-bold uppercase tracking-wide text-ink/65">{label}</span>
+      <span className="text-xs text-ink/65">{hint}</span>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}

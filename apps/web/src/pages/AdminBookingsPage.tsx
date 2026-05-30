@@ -108,7 +108,7 @@ export function AdminBookingsPage() {
       <header className="flex flex-col gap-1">
         <Link
           to="/admin"
-          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/55 hover:text-ink"
+          className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
         >
           <ArrowLeft size={14} />
           Back to dashboard
@@ -225,12 +225,12 @@ function BookingRow({
           <div className="min-w-0">
             <p className="truncate font-bold">
               {booking.training_type?.name ?? "Training"}
-              <span className="font-semibold text-ink/55">
+              <span className="font-semibold text-ink/65">
                 {" · "}
                 {booking.client?.athlete_name ?? "Unassigned"}
               </span>
             </p>
-            <p className="truncate text-sm text-ink/55">{formatDateTime(booking.starts_at)}</p>
+            <p className="truncate text-sm text-ink/65">{formatDateTime(booking.starts_at)}</p>
           </div>
         </div>
 
@@ -331,7 +331,7 @@ function RescheduleForm({
 
   return (
     <div className="flex flex-wrap items-end gap-2 rounded bg-chalk/50 px-3 py-3">
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         New start
         <input
           type="datetime-local"
@@ -409,7 +409,7 @@ function NewBookingForm({ onCreated }: { onCreated: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="mt-4 grid gap-3 rounded bg-white p-4 shadow-soft sm:grid-cols-2">
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Training type
         <select
           value={trainingTypeId}
@@ -423,7 +423,7 @@ function NewBookingForm({ onCreated }: { onCreated: () => void }) {
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Client (optional)
         <select
           value={clientId}
@@ -438,7 +438,7 @@ function NewBookingForm({ onCreated }: { onCreated: () => void }) {
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Start
         <input
           type="datetime-local"
@@ -448,7 +448,7 @@ function NewBookingForm({ onCreated }: { onCreated: () => void }) {
           className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
-      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/55">
+      <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Notes (optional)
         <input
           type="text"

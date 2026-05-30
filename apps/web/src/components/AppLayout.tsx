@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   [
-    "rounded px-2 py-2 text-sm font-medium transition sm:px-3",
+    "focus-ring rounded px-2 py-2 text-sm font-medium transition sm:px-3",
     isActive ? "bg-ink text-white" : "text-ink/70 hover:bg-white/70 hover:text-ink"
   ].join(" ");
 
@@ -13,9 +13,15 @@ export function AppLayout() {
 
   return (
     <div className="page-shell">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded focus:bg-ink focus:px-4 focus:py-2 focus:font-bold focus:text-white"
+      >
+        Skip to content
+      </a>
       <header className="border-b border-ink/10 bg-chalk/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-4">
-          <Link to="/" className="text-base font-black tracking-normal text-ink sm:text-lg">
+          <Link to="/" className="focus-ring rounded text-base font-black tracking-normal text-ink sm:text-lg">
             <span className="sm:hidden">Softball</span>
             <span className="hidden sm:inline">Softball Training</span>
           </Link>
@@ -60,7 +66,9 @@ export function AppLayout() {
           </div>
         </div>
       </header>
-      <Outlet />
+      <div id="main-content" tabIndex={-1} className="outline-none">
+        <Outlet />
+      </div>
     </div>
   );
 }

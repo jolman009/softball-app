@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { getRoleHomePath, useAuth } from "@/lib/auth";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import {
   acceptWaiver,
   ApiError,
@@ -245,6 +246,9 @@ export function BookingPage() {
     authPassword.trim().length > 0 &&
     (authMode === "sign-in" || (authName.trim().length > 0 && authAthleteName.trim().length > 0));
 
+  // Trap focus inside the confirm modal, close on Escape, restore focus on close.
+  const modalRef = useFocusTrap<HTMLDivElement>(showAuthModal, () => setShowAuthModal(false));
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormMessage(null);
@@ -406,7 +410,7 @@ export function BookingPage() {
             <div className="flex items-center gap-3">
               <CalendarClock className="text-field" />
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/45">Step 1</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/65">Step 1</p>
                 <h2 className="text-xl font-black">Training type</h2>
               </div>
             </div>
@@ -476,7 +480,7 @@ export function BookingPage() {
             <div className="flex items-center gap-3">
               <Clock3 className="text-clay" />
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/45">Step 2</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/65">Step 2</p>
                 <h2 className="text-xl font-black">Date and time</h2>
               </div>
             </div>
@@ -553,7 +557,7 @@ export function BookingPage() {
           <section className="mt-8 rounded border border-ink/10 bg-chalk p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/45">Summary</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-ink/65">Summary</p>
                 <p className="mt-1 font-black">
                   {trainingLabel ?? "Training"} at {selectedSlot ? formatSlotTime(selectedSlot.starts_at) : "a selected time"}
                 </p>
@@ -562,7 +566,7 @@ export function BookingPage() {
                 </p>
               </div>
               <div className="text-left sm:text-right">
-                <p className="text-sm font-bold text-ink/55">Due at booking</p>
+                <p className="text-sm font-bold text-ink/65">Due at booking</p>
                 <p className="text-3xl font-black">${total}</p>
               </div>
             </div>
@@ -582,9 +586,17 @@ export function BookingPage() {
       </div>
 
       {showAuthModal ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/55 px-4 py-6 sm:items-center">
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/55 px-4 py-6 sm:items-center"
+          onClick={(event) => {
+            // Click on the backdrop (not the dialog) closes the modal.
+            if (event.target === event.currentTarget) setShowAuthModal(false);
+          }}
+        >
           <div
-            className="w-full max-w-lg rounded bg-white shadow-soft"
+            ref={modalRef}
+            tabIndex={-1}
+            className="w-full max-w-lg rounded bg-white shadow-soft outline-none"
             role="dialog"
             aria-modal="true"
             aria-labelledby="booking-auth-title"
@@ -617,7 +629,7 @@ export function BookingPage() {
                 <GoogleIcon />
                 Continue with Google
               </button>
-              <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-ink/45">
+              <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-ink/65">
                 <span className="h-px flex-1 bg-ink/10" />
                 or use email
                 <span className="h-px flex-1 bg-ink/10" />

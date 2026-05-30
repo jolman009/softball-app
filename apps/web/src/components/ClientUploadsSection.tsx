@@ -106,7 +106,7 @@ export function ClientUploadsSection({ bookings }: { bookings: BookingSummary[] 
                   >
                     <div className="min-w-0">
                       <p className="truncate font-bold">{u.title}</p>
-                      <p className="truncate text-sm text-ink/55">
+                      <p className="truncate text-sm text-ink/65">
                         {formatDate(u.created_at)}
                         {u.booking?.training_type ? ` · ${u.booking.training_type.name}` : ""}
                       </p>
@@ -232,7 +232,7 @@ function UploadForm({
       </label>
 
       <div className="mt-4">
-        <label className="block text-xs font-bold uppercase tracking-wide text-ink/55" htmlFor="upload-title">
+        <label className="block text-xs font-bold uppercase tracking-wide text-ink/65" htmlFor="upload-title">
           Title
         </label>
         <input
@@ -246,10 +246,10 @@ function UploadForm({
 
       <div className="mt-4">
         <label
-          className="block text-xs font-bold uppercase tracking-wide text-ink/55"
+          className="block text-xs font-bold uppercase tracking-wide text-ink/65"
           htmlFor="upload-description"
         >
-          Note for your coach <span className="font-semibold normal-case text-ink/40">(optional)</span>
+          Note for your coach <span className="font-semibold normal-case text-ink/65">(optional)</span>
         </label>
         <textarea
           id="upload-description"
@@ -263,10 +263,10 @@ function UploadForm({
       {bookings.length > 0 ? (
         <div className="mt-4">
           <label
-            className="block text-xs font-bold uppercase tracking-wide text-ink/55"
+            className="block text-xs font-bold uppercase tracking-wide text-ink/65"
             htmlFor="upload-booking"
           >
-            Attach to a lesson <span className="font-semibold normal-case text-ink/40">(optional)</span>
+            Attach to a lesson <span className="font-semibold normal-case text-ink/65">(optional)</span>
           </label>
           <select
             id="upload-booking"
