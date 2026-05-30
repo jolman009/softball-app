@@ -17,9 +17,16 @@ import { meRouter } from "./routes/me.js";
 import { resourcesRouter } from "./routes/resources.js";
 import { trainingTypesRouter } from "./routes/trainingTypes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
+import { authLimiter, bookingsLimiter } from "./middleware/rateLimit.js";
 
 export function createApp() {
   const app = express();
+
+  // Behind a proxy, trust the configured number of hops so rate limiting (and
+  // anything else reading req.ip) sees the real client IP. 0 in local dev.
+  if (env.TRUST_PROXY > 0) {
+    app.set("trust proxy", env.TRUST_PROXY);
+  }
 
   app.use(helmet());
   app.use(
@@ -32,10 +39,10 @@ export function createApp() {
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
   app.use("/api/health", healthRouter);
-  app.use("/api/auth", authRouter);
+  app.use("/api/auth", authLimiter, authRouter);
   app.use("/api/training-types", trainingTypesRouter);
   app.use("/api/availability", availabilityRouter);
-  app.use("/api/bookings", bookingsRouter);
+  app.use("/api/bookings", bookingsLimiter, bookingsRouter);
   app.use("/api/calendar", calendarRouter);
   app.use("/api/me", meRouter);
   app.use("/api/resources", resourcesRouter);

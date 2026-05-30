@@ -5,6 +5,11 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   API_PORT: z.coerce.number().int().positive().default(4000),
   WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
+  // Number of proxy hops to trust for client-IP resolution (Express `trust
+  // proxy`). 0 = trust no proxy (correct for local dev). Set to 1 in production
+  // when deployed behind a single reverse proxy (Vercel/Render/etc.) so rate
+  // limiting keys on the real client IP, not the proxy's.
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
