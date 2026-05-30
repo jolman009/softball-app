@@ -4,6 +4,7 @@ import { authenticate } from "../middleware/auth.js";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { ensureClientForUser } from "../services/clients.service.js";
 import { deleteEvent } from "../services/googleCalendar.service.js";
+import { sendBookingCancellation } from "../services/email.service.js";
 import {
   ALLOWED_MIME_TYPES,
   MAX_UPLOAD_BYTES,
@@ -121,6 +122,19 @@ const CANCELLABLE_STATUSES = new Set(["hold", "pending", "confirmed"]);
 const cancelParamsSchema = z.object({ id: z.string().uuid() });
 const cancelBodySchema = z.object({ reason: z.string().trim().max(500).optional() });
 
+type CancelBookingRow = {
+  id: string;
+  status: string;
+  starts_at: string;
+  ends_at: string;
+  created_by: string;
+  client_id: string | null;
+  coach_id: string;
+  google_calendar_event_id: string | null;
+  other_training_text: string | null;
+  training_type: { name: string } | null;
+};
+
 meRouter.post("/bookings/:id/cancel", async (req, res, next) => {
   try {
     const { id } = cancelParamsSchema.parse(req.params);
@@ -130,9 +144,11 @@ meRouter.post("/bookings/:id/cancel", async (req, res, next) => {
 
     const { data: booking, error: lookupError } = await supabaseAdmin
       .from("bookings")
-      .select("id, status, starts_at, created_by, client_id, coach_id, google_calendar_event_id")
+      .select(
+        "id, status, starts_at, ends_at, created_by, client_id, coach_id, google_calendar_event_id, other_training_text, training_type:training_types(name)"
+      )
       .eq("id", id)
-      .maybeSingle();
+      .maybeSingle<CancelBookingRow>();
 
     if (lookupError) throw lookupError;
     if (!booking) return res.status(404).json({ error: "Booking not found" });
@@ -167,6 +183,23 @@ meRouter.post("/bookings/:id/cancel", async (req, res, next) => {
     // Best-effort calendar cleanup — DB stays authoritative.
     if (booking.google_calendar_event_id) {
       await deleteEvent({ coachId: booking.coach_id, eventId: booking.google_calendar_event_id });
+    }
+
+    // Cancellation receipt — skip holds, which were never a real session.
+    if (booking.status !== "hold") {
+      await sendBookingCancellation(
+        {
+          bookingId: booking.id,
+          coachId: booking.coach_id,
+          createdBy: booking.created_by,
+          clientId: booking.client_id,
+          trainingTypeName: booking.training_type?.name ?? null,
+          otherTrainingText: booking.other_training_text,
+          startsAt: booking.starts_at,
+          endsAt: booking.ends_at
+        },
+        reason ?? null
+      );
     }
 
     res.status(204).send();

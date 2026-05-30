@@ -26,7 +26,22 @@ const envSchema = z.object({
   // OAuth client used for sign-in.
   GOOGLE_OAUTH_CLIENT_ID: z.string().min(1),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().min(1),
-  GOOGLE_OAUTH_REDIRECT_URI: z.string().url().default("http://localhost:4000/api/calendar/google/callback")
+  GOOGLE_OAUTH_REDIRECT_URI: z.string().url().default("http://localhost:4000/api/calendar/google/callback"),
+  // Transactional email (Resend). When RESEND_API_KEY is unset, the email
+  // service degrades to a no-op (logs and returns) so local dev and outages
+  // never block a booking. EMAIL_FROM must be a verified sender/domain in
+  // production; `onboarding@resend.dev` works out of the box but only delivers
+  // to the Resend account owner's address.
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default("Softball Training <onboarding@resend.dev>"),
+  // IANA timezone used to render session times in outbound emails. The coach's
+  // availability-window timezone takes precedence when one exists; this is the
+  // fallback.
+  DISPLAY_TIMEZONE: z.string().default("America/Chicago"),
+  // Error monitoring (Sentry). When SENTRY_DSN is unset, Sentry is never
+  // initialized and all hooks are no-ops.
+  SENTRY_DSN: z.string().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0)
 });
 
 export const env = envSchema.parse(process.env);

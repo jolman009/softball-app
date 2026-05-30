@@ -2,8 +2,8 @@
 
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
-> **Last updated:** 2026-05-29 (Phase 5 started — rate limiting shipped on `/api/auth/*` + `/api/bookings` via `express-rate-limit`, verified. Phase 4 complete.)
-> **Current phase:** Phase 5 — Production hardening 🟡 in progress. Done: rate limiting, admin audit-log screen, cancellation policy + waiver gate, accessibility pass. Remaining: transactional email / Sentry / PostHog (need keys), backup verification (dashboard).
+> **Last updated:** 2026-05-30 (Phase 5 — transactional email (Resend), Sentry, and PostHog booking-funnel analytics shipped. Only backup verification (a dashboard check) remains.)
+> **Current phase:** Phase 5 — Production hardening 🟡 nearly done. Done: rate limiting, admin audit-log screen, cancellation policy + waiver gate, accessibility pass, transactional email, Sentry (web+api), PostHog funnel. Remaining: backup verification (Supabase dashboard PITR check).
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -26,7 +26,7 @@
 | Google Calendar integration | ✅ Done | OAuth (3.1) + FreeBusy (3.2) + event create-on-confirm, update-on-reschedule, delete-on-cancel (3.3, wired in 4.3) |
 | Resource library (coach → client) | ✅ Done | Admin CRUD + client browse/detail; signed URLs; visibility enforced (Phase 4.4) |
 | Client video uploads & review (client → coach) | ✅ Done | Client upload + coach review queue w/ summaries (Phase 4.5) |
-| Email confirmations | 🔴 Not started | |
+| Email confirmations | ✅ Done | Resend; booking confirm/reschedule/cancel (Phase 5). Needs a verified domain before launch. |
 | Mobile / Capacitor | 🔴 Not started | |
 | Payments | 🔴 Not started | Post-MVP |
 
@@ -149,10 +149,10 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 **Target window:** 2026-09-29 → 2026-10-26 (≈ 4 weeks)
 **Goal:** It's safe to put paying clients on the platform.
 
-- [ ] Transactional email via Resend or SendGrid: booking confirmation, reschedule, cancel, password reset.
+- [x] Transactional email via Resend: booking confirmation, reschedule, cancel. *(2026-05-30 — `services/email.service.ts` wraps Resend; env-gated on `RESEND_API_KEY` (no-op + log when unset, never throws into a request so an email outage can't roll back a booking). Confirmation sent on `POST /bookings/:id/confirm` + admin manual create; reschedule + cancellation on the admin actions and the client self-cancel (skipped for holds). Recipient resolves to the linked client's account email, falling back to the booking creator; session time rendered in the coach's availability-window timezone (`DISPLAY_TIMEZONE` fallback). `EMAIL_FROM` defaults to the `onboarding@resend.dev` test sender. Verified 2026-05-30: live Resend delivery succeeded through the real service path (DB recipient lookup → template → send) to the account-owner address. **Password reset is intentionally NOT here** — those emails are issued by Supabase Auth; route them through Resend by pointing Supabase's custom SMTP at Resend in the dashboard (Auth → Email), a config step, not app code. **Before soft-launch the test sender must be replaced with a verified domain** — `onboarding@resend.dev` only delivers to the Resend account owner.)*
 - [x] Rate limiting on `/api/auth/*` and `/api/bookings`. *(2026-05-29 — `express-rate-limit` v8; `middleware/rateLimit.ts`: auth limiter 20/15 min, bookings limiter 30/15 min, keyed on `req.ip`, JSON 429 `{ error }` + `draft-7` `RateLimit` headers. New `TRUST_PROXY` env (default 0; set to 1 in prod behind a proxy) drives Express `trust proxy` so keying uses the real client IP. Verified: auth 429s on the 21st request; `/api/bookings` carries `RateLimit-Policy: 30;w=900`. Note: login/signup run against Supabase Auth directly, not this API, so the high-value guard is `/api/bookings` hold creation.)*
-- [ ] Sentry on web + api.
-- [ ] PostHog booking-funnel events.
+- [x] Sentry on web + api. *(2026-05-30 — env-gated on a DSN, no-op when absent. API: `lib/sentry.ts` `initSentry()` called first in `index.ts`; `errorHandler` reports genuine 500s (not Zod 400s) via `captureException`. Web: `lib/sentry.ts` `initSentry()` in `main.tsx` using `@sentry/react`, conservative sample rates. Keys are dropped into `.env` when ready — no code change. Documented in both `.env.example` files.)*
+- [x] PostHog booking-funnel events. *(2026-05-30 — env-gated on `VITE_POSTHOG_KEY`, no-op when absent. `lib/analytics.ts` centralizes the funnel event names + `track`/`identify`/`reset` wrappers; `posthog.init` in `main.tsx`. Events: `booking_started` (page mount), `booking_type_selected`, `booking_slot_selected`, `booking_confirm_opened`, `booking_confirmed` (email + google paths), `booking_failed` (with stage), `booking_cancelled` (client dashboard). `identify`/`reset` tied to Supabase auth state in `lib/auth.tsx` so the funnel links to a user. Autocapture off; localStorage persistence.)*
 - [x] Audit-log review screen for admin (`booking_audit_logs`). *(2026-05-29 — `GET /api/admin/audit-logs?action=&limit=&offset=` joins actor profile + booking context; new `/admin/audit` page: action filter chips, newest-first list with action badge, `prev → new` status transition, athlete link (or "walk-in"), actor name, "Load more" paging. Dashboard "Audit log" quick action added. Note: status changes made through the admin API run as service-role (no `auth.uid()`), so those rows have a null actor and render as "System"; only `created` rows carry an actor (`created_by`). Verified in-browser against real history + the Created filter.)*
 - [x] Accessibility pass: keyboard nav, focus rings, ARIA on the booking modal, color-contrast check. *(2026-05-29 — `useFocusTrap` hook drives the booking confirm modal: focus moves in on open, Tab/Shift+Tab cycle within it, Escape + backdrop-click close, focus restored to the trigger on close (verified in-browser). Skip-to-content link (first tab stop → `#main-content`) + focus-ring on nav/brand links in `AppLayout`. Contrast: the brand's white-on-color combos all pass AA (ink ~17:1, field ~6:1, clay ~4.9:1); the failing pieces were muted body text — bumped `text-ink/45` & `text-ink/55` → `text-ink/65` (≥5:1 on chalk + white) and the `(optional)` hint spans `text-ink/40` → `/65` across 16 files. There is no literal "navy/yellow" in the palette — that was stale plan language; the real tokens are ink/field/clay/chalk. Decorative icons left at `/40`.)*
 - [ ] Backup verification: confirm Supabase point-in-time recovery is enabled on the production project.

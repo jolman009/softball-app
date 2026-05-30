@@ -4,6 +4,11 @@ import { authenticate, requireRole } from "../middleware/auth.js";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { getDefaultCoachId } from "../services/coaches.service.js";
 import { createEvent, deleteEvent, updateEvent } from "../services/googleCalendar.service.js";
+import {
+  sendBookingCancellation,
+  sendBookingConfirmation,
+  sendBookingReschedule
+} from "../services/email.service.js";
 
 export const adminRouter = Router();
 
@@ -225,7 +230,7 @@ const bookingActionParamsSchema = z.object({ id: z.string().uuid() });
 
 // Joined shape we read back for calendar summaries + the response payload.
 const BOOKING_DETAIL_SELECT =
-  "id, client_id, coach_id, training_type_id, starts_at, ends_at, status, price, notes, other_training_text, google_calendar_event_id, training_type:training_types(name), client:clients(athlete_name)";
+  "id, client_id, coach_id, training_type_id, starts_at, ends_at, status, price, notes, other_training_text, google_calendar_event_id, created_by, training_type:training_types(name), client:clients(athlete_name)";
 
 type BookingDetailRow = {
   id: string;
@@ -239,9 +244,24 @@ type BookingDetailRow = {
   notes: string | null;
   other_training_text: string | null;
   google_calendar_event_id: string | null;
+  created_by: string;
   training_type: { name: string } | null;
   client: { athlete_name: string } | null;
 };
+
+/** Builds the booking-email payload from a detail row. */
+function toEmailContext(b: BookingDetailRow) {
+  return {
+    bookingId: b.id,
+    coachId: b.coach_id,
+    createdBy: b.created_by,
+    clientId: b.client_id,
+    trainingTypeName: b.training_type?.name ?? null,
+    otherTrainingText: b.other_training_text,
+    startsAt: b.starts_at,
+    endsAt: b.ends_at
+  };
+}
 
 /** Postgres exclusion_violation from the bookings overlap constraint. */
 function isExclusionViolation(error: unknown): boolean {
@@ -261,7 +281,7 @@ function buildEventSummary(b: BookingDetailRow): string {
 
 /** Strips the join fields so the response matches the flat booking shape. */
 function toBookingResponse(b: BookingDetailRow) {
-  const { training_type: _tt, client: _client, other_training_text: _ott, ...rest } = b;
+  const { training_type: _tt, client: _client, other_training_text: _ott, created_by: _cb, ...rest } = b;
   return rest;
 }
 
@@ -304,6 +324,12 @@ adminRouter.post("/bookings/:id/cancel", async (req, res, next) => {
     // Best-effort: remove the mirrored calendar event. DB stays authoritative.
     if (existing.google_calendar_event_id) {
       await deleteEvent({ coachId: existing.coach_id, eventId: existing.google_calendar_event_id });
+    }
+
+    // Notify the client — but not for holds the coach is clearing out, which
+    // were never a real session in the client's eyes.
+    if (existing.status !== "hold") {
+      await sendBookingCancellation(toEmailContext(data), reason ?? null);
     }
 
     res.json({ booking: toBookingResponse(data) });
@@ -414,6 +440,11 @@ adminRouter.post("/bookings/:id/reschedule", async (req, res, next) => {
       }
     }
 
+    // Email the client the new time — only for real sessions, not holds.
+    if (data.status === "confirmed" || data.status === "rescheduled") {
+      await sendBookingReschedule(toEmailContext(data));
+    }
+
     res.json({ booking: toBookingResponse(data) });
   } catch (error) {
     next(error);
@@ -479,6 +510,10 @@ adminRouter.post("/bookings", async (req, res, next) => {
         .update({ google_calendar_event_id: created.eventId })
         .eq("id", data.id);
     }
+
+    // Confirmation email to the linked client (no-op when the walk-in has no
+    // account; resolves to the booking creator otherwise).
+    await sendBookingConfirmation(toEmailContext(data));
 
     res.status(201).json({ booking: toBookingResponse(data) });
   } catch (error) {

@@ -5,6 +5,7 @@ import { supabaseAdmin } from "../lib/supabase.js";
 import { ensureClientForUser } from "../services/clients.service.js";
 import { getDefaultCoachId } from "../services/coaches.service.js";
 import { createEvent } from "../services/googleCalendar.service.js";
+import { sendBookingConfirmation } from "../services/email.service.js";
 
 export const bookingsRouter = Router();
 
@@ -196,6 +197,20 @@ bookingsRouter.post(
           );
         }
       }
+
+      // Email the client their confirmation. Failure-tolerant + awaited so the
+      // send attempt completes within the request (serverless-safe); the email
+      // service swallows its own errors, so this can never fail the booking.
+      await sendBookingConfirmation({
+        bookingId: updated.id,
+        coachId: updated.coach_id,
+        createdBy: existing.created_by,
+        clientId: updated.client_id,
+        trainingTypeName: updated.training_type?.name ?? null,
+        otherTrainingText: updated.other_training_text,
+        startsAt: updated.starts_at,
+        endsAt: updated.ends_at
+      });
 
       const { training_type: _tt, client: _client, other_training_text: _ott, ...response } = updated;
       res.json({ booking: response });

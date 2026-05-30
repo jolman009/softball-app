@@ -1,5 +1,9 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
+import { initSentry } from "./lib/sentry.js";
+
+// Initialize error monitoring before anything else so startup errors are caught.
+initSentry();
 
 const app = createApp();
 

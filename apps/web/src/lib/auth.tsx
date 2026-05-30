@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, type AppRole, type Profile } from "./supabase";
+import { identify, resetAnalytics } from "./analytics";
 
 type AuthState = {
   session: Session | null;
@@ -137,6 +138,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (!isMounted) return;
         setSession(data.session);
         if (data.session?.user) {
+          identify(data.session.user.id);
           await loadProfile(data.session.user.id);
         }
       })
@@ -151,8 +153,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
       if (nextSession?.user) {
+        identify(nextSession.user.id);
         void loadProfile(nextSession.user.id);
       } else {
+        resetAnalytics();
         setProfile(null);
       }
     });

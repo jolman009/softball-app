@@ -11,6 +11,7 @@ import {
   type BookingSummary
 } from "@/lib/api";
 import { ClientUploadsSection } from "@/components/ClientUploadsSection";
+import { BookingEvent, track } from "@/lib/analytics";
 
 function formatLongDate(iso: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -209,6 +210,7 @@ function UpcomingCard({ booking, onCancelled }: { booking: BookingSummary; onCan
     setCancelError(null);
     try {
       await cancelMyBooking(booking.id);
+      track(BookingEvent.Cancelled, { bookingId: booking.id, status: booking.status });
       onCancelled();
     } catch (err) {
       setIsCancelling(false);

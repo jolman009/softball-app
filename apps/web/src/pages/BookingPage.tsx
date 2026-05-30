@@ -16,6 +16,7 @@ import {
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { getRoleHomePath, useAuth } from "@/lib/auth";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { BookingEvent, track } from "@/lib/analytics";
 import {
   acceptWaiver,
   ApiError,
@@ -118,6 +119,9 @@ export function BookingPage() {
   useEffect(() => {
     let isMounted = true;
 
+    // Top of the booking funnel.
+    track(BookingEvent.Started);
+
     fetchTrainingTypes()
       .then((types) => {
         if (!isMounted) return;
@@ -177,8 +181,14 @@ export function BookingPage() {
           otherTrainingText: intent.otherTrainingText
         });
         await confirmBooking(hold.id);
+        track(BookingEvent.Confirmed, {
+          trainingTypeId: intent.trainingTypeId,
+          startsAt: intent.startsAt,
+          method: "google"
+        });
         navigate(getRoleHomePath(profile), { replace: true });
       } catch (err) {
+        track(BookingEvent.Failed, { stage: "google-resume" });
         setResumeError(formatAuthError(err));
         navigate("/booking", { replace: true });
       } finally {
@@ -260,6 +270,7 @@ export function BookingPage() {
 
     setWaiverAccepted(false);
     setShowAuthModal(true);
+    track(BookingEvent.ConfirmOpened, { trainingTypeId, startsAt: selectedSlot?.starts_at });
   }
 
   async function handleConfirm() {
@@ -296,6 +307,7 @@ export function BookingPage() {
       setShowAuthModal(false);
       navigate(getRoleHomePath(profile));
     } catch (error) {
+      track(BookingEvent.Failed, { stage: "confirm", method: authMode });
       setAuthMessage(formatAuthError(error));
     } finally {
       setIsAuthSubmitting(false);
@@ -324,6 +336,7 @@ export function BookingPage() {
       });
       // The browser is about to navigate away; nothing else to do here.
     } catch (error) {
+      track(BookingEvent.Failed, { stage: "google-redirect" });
       sessionStorage.removeItem(PENDING_BOOKING_KEY);
       setAuthMessage(formatAuthError(error));
       setIsAuthSubmitting(false);
@@ -349,6 +362,11 @@ export function BookingPage() {
       otherTrainingText: isOtherType ? otherTraining.trim() : undefined
     });
     await confirmBooking(hold.id);
+    track(BookingEvent.Confirmed, {
+      trainingTypeId: selectedTrainingType.id,
+      startsAt: selectedSlot.starts_at,
+      method: "email"
+    });
   }
 
   return (
@@ -441,6 +459,7 @@ export function BookingPage() {
                       onClick={() => {
                         setTrainingTypeId(type.id);
                         setFormMessage(null);
+                        track(BookingEvent.TypeSelected, { trainingTypeId: type.id, name: type.name });
                       }}
                       aria-pressed={isSelected}
                     >
@@ -537,6 +556,7 @@ export function BookingPage() {
                       onClick={() => {
                         setSelectedSlotKey(key);
                         setFormMessage(null);
+                        track(BookingEvent.SlotSelected, { startsAt: slot.starts_at });
                       }}
                       aria-pressed={isSelected}
                     >
