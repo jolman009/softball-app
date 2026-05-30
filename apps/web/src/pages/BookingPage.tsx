@@ -16,6 +16,7 @@ import {
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { getRoleHomePath, useAuth } from "@/lib/auth";
 import {
+  acceptWaiver,
   ApiError,
   confirmBooking,
   createBooking,
@@ -103,6 +104,10 @@ export function BookingPage() {
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
 
+  // Waiver acceptance is required before a client can confirm a booking
+  // (enforced server-side too). Reset whenever the modal reopens.
+  const [waiverAccepted, setWaiverAccepted] = useState(false);
+
   const [isResuming, setIsResuming] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   // StrictMode double-invokes effects in dev; this ref prevents a double-book.
@@ -161,6 +166,9 @@ export function BookingPage() {
 
     (async () => {
       try {
+        // The waiver checkbox was required before the Google redirect; record it
+        // now that we have a session, then finish the reserved booking.
+        await acceptWaiver();
         const hold = await createBooking({
           trainingTypeId: intent.trainingTypeId,
           startsAt: intent.startsAt,
@@ -232,6 +240,7 @@ export function BookingPage() {
   const { hours: sessionHours, rate: hourlyRate, total } = computeSessionTotal(selectedTrainingType);
   const canContinue = Boolean(selectedTrainingType && selectedDate && selectedSlot && !isOtherMissing);
   const canConfirm =
+    waiverAccepted &&
     authEmail.trim().length > 0 &&
     authPassword.trim().length > 0 &&
     (authMode === "sign-in" || (authName.trim().length > 0 && authAthleteName.trim().length > 0));
@@ -245,6 +254,7 @@ export function BookingPage() {
       return;
     }
 
+    setWaiverAccepted(false);
     setShowAuthModal(true);
   }
 
@@ -320,6 +330,10 @@ export function BookingPage() {
     if (!selectedTrainingType || !selectedSlot) {
       throw new Error("A training type and time are required.");
     }
+
+    // Record the waiver acceptance (the modal required the checkbox) before
+    // booking — the confirm endpoint rejects unsigned clients.
+    await acceptWaiver();
 
     // Two-step reservation: a hold blocks the slot at the DB layer, then `confirm` flips it
     // to `confirmed`. If the hold succeeds but confirm fails, the hold expires on its own
@@ -597,7 +611,7 @@ export function BookingPage() {
               <button
                 type="button"
                 onClick={() => void handleGoogleConfirm()}
-                disabled={!canContinue || isAuthSubmitting}
+                disabled={!canContinue || !waiverAccepted || isAuthSubmitting}
                 className="focus-ring inline-flex w-full items-center justify-center gap-3 rounded border border-ink/12 bg-white px-5 py-3 font-bold text-ink transition hover:bg-chalk disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <GoogleIcon />
@@ -722,6 +736,20 @@ export function BookingPage() {
                   </div>
                 </div>
               </div>
+
+              <label className="mt-5 flex items-start gap-3 rounded border border-ink/10 bg-chalk/60 p-3">
+                <input
+                  type="checkbox"
+                  className="focus-ring mt-0.5 h-4 w-4 shrink-0 rounded border-ink/30"
+                  checked={waiverAccepted}
+                  onChange={(event) => setWaiverAccepted(event.target.checked)}
+                />
+                <span className="text-sm leading-6 text-ink/75">
+                  I have read and accept the{" "}
+                  <span className="font-bold text-ink">liability waiver and release</span>, and confirm I'm
+                  authorized to register this athlete.
+                </span>
+              </label>
 
               {authMessage ? (
                 <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">

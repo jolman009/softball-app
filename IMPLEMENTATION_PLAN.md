@@ -3,7 +3,7 @@
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
 > **Last updated:** 2026-05-29 (Phase 5 started — rate limiting shipped on `/api/auth/*` + `/api/bookings` via `express-rate-limit`, verified. Phase 4 complete.)
-> **Current phase:** Phase 5 — Production hardening 🟡 in progress. Done: rate limiting, admin audit-log screen. Next candidates: cancellation policy + waiver gate (code-only), transactional email / Sentry / PostHog (need keys), a11y pass, backup verification (dashboard).
+> **Current phase:** Phase 5 — Production hardening 🟡 in progress. Done: rate limiting, admin audit-log screen, cancellation policy + waiver gate. Next candidates: transactional email / Sentry / PostHog (need keys), a11y pass, backup verification (dashboard).
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -156,8 +156,8 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 - [x] Audit-log review screen for admin (`booking_audit_logs`). *(2026-05-29 — `GET /api/admin/audit-logs?action=&limit=&offset=` joins actor profile + booking context; new `/admin/audit` page: action filter chips, newest-first list with action badge, `prev → new` status transition, athlete link (or "walk-in"), actor name, "Load more" paging. Dashboard "Audit log" quick action added. Note: status changes made through the admin API run as service-role (no `auth.uid()`), so those rows have a null actor and render as "System"; only `created` rows carry an actor (`created_by`). Verified in-browser against real history + the Created filter.)*
 - [ ] Accessibility pass: keyboard nav, focus rings, ARIA on the booking modal, color-contrast check on the navy/yellow combo.
 - [ ] Backup verification: confirm Supabase point-in-time recovery is enabled on the production project.
-- [ ] Cancellation policy enforcement (e.g., no client-side cancel within 12 h).
-- [ ] Waiver acceptance flow before first paid booking.
+- [x] Cancellation policy enforcement (e.g., no client-side cancel within 12 h). *(2026-05-29 — added client self-cancel `POST /api/me/bookings/:id/cancel`: ownership check (booker or linked client), cancellable-status guard, **12 h cutoff** (`CANCELLATION_CUTOFF_HOURS`, mirrored client-side), + best-effort calendar event delete. Dashboard upcoming cards show a "Cancel session" button >12 h out, or "Within 12h — contact your coach" inside the window. Admins keep their no-limit cancel in `admin.ts`. Verified in-browser both ways.)*
+- [x] Waiver acceptance flow before first paid booking. *(2026-05-29 — `POST /api/me/waiver` stamps `clients.waiver_signed_at` (idempotent; no-op for admins so the public flow never breaks). Required "I accept the liability waiver" checkbox in the booking confirm modal gates both the email and Google confirm buttons; the client calls `acceptWaiver()` before booking on both paths. `POST /api/bookings/:id/confirm` enforces it server-side for client role (409 if unsigned; admins exempt). Verified in-browser: checkbox disabled→enabled gating.)*
 
 **Exit criteria:** Soft-launch to a small group of real clients.
 

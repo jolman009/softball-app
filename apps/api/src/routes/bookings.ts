@@ -126,6 +126,20 @@ bookingsRouter.post(
         return res.json({ booking: existing });
       }
 
+      // Phase 5: a client must have accepted the waiver before locking in a
+      // paid session. Admins (manual bookings / walk-ins) are exempt.
+      if (req.user!.role === "client") {
+        const { data: client, error: waiverError } = await supabaseAdmin
+          .from("clients")
+          .select("waiver_signed_at")
+          .eq("user_id", req.user!.id)
+          .maybeSingle();
+        if (waiverError) throw waiverError;
+        if (!client?.waiver_signed_at) {
+          return res.status(409).json({ error: "Please accept the waiver before confirming your booking." });
+        }
+      }
+
       if (existing.status !== "hold") {
         return res
           .status(409)

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authenticate } from "../middleware/auth.js";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { ensureClientForUser } from "../services/clients.service.js";
+import { deleteEvent } from "../services/googleCalendar.service.js";
 import {
   ALLOWED_MIME_TYPES,
   MAX_UPLOAD_BYTES,
@@ -56,6 +57,119 @@ meRouter.get("/bookings", async (req, res, next) => {
       .slice(0, 10);
 
     res.json({ upcoming, past });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================
+// Waiver acceptance (Phase 5) — gates paid bookings
+// ============================================================
+
+/**
+ * Stamps the signed-in client's waiver acceptance. Idempotent: preserves the
+ * original acceptance date if already signed. The booking confirm step enforces
+ * that this has happened before a client can lock in a session.
+ */
+meRouter.post("/waiver", async (req, res, next) => {
+  try {
+    const client = await ensureClientForUser(req.user!.id, req.user!.role);
+    // Only clients carry a waiver; an admin (no client row) is a harmless no-op
+    // so the public booking flow never breaks regardless of who's signed in.
+    if (!client) {
+      return res.json({ waiver_signed_at: null });
+    }
+
+    const { data: existing, error: readError } = await supabaseAdmin
+      .from("clients")
+      .select("waiver_signed_at")
+      .eq("id", client.id)
+      .maybeSingle();
+    if (readError) throw readError;
+
+    if (existing?.waiver_signed_at) {
+      return res.json({ waiver_signed_at: existing.waiver_signed_at });
+    }
+
+    const signedAt = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from("clients")
+      .update({ waiver_signed_at: signedAt })
+      .eq("id", client.id);
+    if (error) throw error;
+
+    res.json({ waiver_signed_at: signedAt });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================
+// Client self-service cancellation (Phase 5)
+// ============================================================
+
+/**
+ * Clients may cancel their own upcoming session, but not within this many hours
+ * of the start time — late cancels go through the coach. Admins have no such
+ * limit (see admin.ts). Keep in sync with CANCELLATION_CUTOFF_HOURS in
+ * apps/web/src/lib/api.ts.
+ */
+const CANCELLATION_CUTOFF_HOURS = 12;
+
+const CANCELLABLE_STATUSES = new Set(["hold", "pending", "confirmed"]);
+
+const cancelParamsSchema = z.object({ id: z.string().uuid() });
+const cancelBodySchema = z.object({ reason: z.string().trim().max(500).optional() });
+
+meRouter.post("/bookings/:id/cancel", async (req, res, next) => {
+  try {
+    const { id } = cancelParamsSchema.parse(req.params);
+    const { reason } = cancelBodySchema.parse(req.body ?? {});
+
+    const client = await ensureClientForUser(req.user!.id, req.user!.role);
+
+    const { data: booking, error: lookupError } = await supabaseAdmin
+      .from("bookings")
+      .select("id, status, starts_at, created_by, client_id, coach_id, google_calendar_event_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (lookupError) throw lookupError;
+    if (!booking) return res.status(404).json({ error: "Booking not found" });
+
+    // Ownership: the booker, or the linked client's user.
+    const owns = booking.created_by === req.user!.id || (client != null && booking.client_id === client.id);
+    if (!owns) return res.status(403).json({ error: "You can only cancel your own booking." });
+
+    if (!CANCELLABLE_STATUSES.has(booking.status)) {
+      return res.status(409).json({ error: `This booking is ${booking.status} and can't be cancelled.` });
+    }
+
+    const hoursUntil = (Date.parse(booking.starts_at) - Date.now()) / (1000 * 60 * 60);
+    if (hoursUntil < CANCELLATION_CUTOFF_HOURS) {
+      return res.status(409).json({
+        error: `Cancellations within ${CANCELLATION_CUTOFF_HOURS} hours of the session aren't allowed. Please contact your coach.`
+      });
+    }
+
+    const { error } = await supabaseAdmin
+      .from("bookings")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: reason ?? null,
+        google_calendar_event_id: null
+      })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    // Best-effort calendar cleanup — DB stays authoritative.
+    if (booking.google_calendar_event_id) {
+      await deleteEvent({ coachId: booking.coach_id, eventId: booking.google_calendar_event_id });
+    }
+
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

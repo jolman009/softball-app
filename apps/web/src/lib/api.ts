@@ -190,6 +190,27 @@ export async function fetchMyBookings(): Promise<MyBookingsResponse> {
   return apiFetch<MyBookingsResponse>("/me/bookings", { auth: true });
 }
 
+/**
+ * Clients can't cancel within this many hours of the start — late cancels go
+ * through the coach. Keep in sync with CANCELLATION_CUTOFF_HOURS in
+ * apps/api/src/routes/me.ts.
+ */
+export const CANCELLATION_CUTOFF_HOURS = 12;
+
+/** Cancels the signed-in client's own booking (subject to the 12h cutoff, enforced server-side). */
+export async function cancelMyBooking(id: string, reason?: string): Promise<void> {
+  await apiFetch<void>(`/me/bookings/${id}/cancel`, {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ reason: reason?.trim() || undefined })
+  });
+}
+
+/** Records the signed-in client's waiver acceptance (idempotent). */
+export async function acceptWaiver(): Promise<{ waiver_signed_at: string }> {
+  return apiFetch<{ waiver_signed_at: string }>("/me/waiver", { method: "POST", auth: true });
+}
+
 export type AdminBookingRow = {
   id: string;
   starts_at: string;

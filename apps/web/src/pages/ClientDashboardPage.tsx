@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarPlus, Clock3, Hourglass, Library } from "lucide-react";
+import { ArrowRight, CalendarPlus, Clock3, Hourglass, Library, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { fetchMyBookings, type BookingStatus, type BookingSummary } from "@/lib/api";
+import {
+  ApiError,
+  CANCELLATION_CUTOFF_HOURS,
+  cancelMyBooking,
+  fetchMyBookings,
+  type BookingStatus,
+  type BookingSummary
+} from "@/lib/api";
 import { ClientUploadsSection } from "@/components/ClientUploadsSection";
 
 function formatLongDate(iso: string) {
@@ -57,27 +64,21 @@ export function ClientDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    fetchMyBookings()
-      .then((data) => {
-        if (!isMounted) return;
-        setUpcoming(data.upcoming);
-        setPast(data.past);
-      })
-      .catch((err: unknown) => {
-        if (!isMounted) return;
-        setError(err instanceof Error ? err.message : "Unable to load your sessions.");
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+  const loadBookings = useCallback(async () => {
+    try {
+      const data = await fetchMyBookings();
+      setUpcoming(data.upcoming);
+      setPast(data.past);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load your sessions.");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadBookings();
+  }, [loadBookings]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-12">
@@ -134,7 +135,7 @@ export function ClientDashboardPage() {
           ) : (
             <ul className="grid gap-4 sm:grid-cols-2">
               {upcoming.map((booking) => (
-                <UpcomingCard key={booking.id} booking={booking} />
+                <UpcomingCard key={booking.id} booking={booking} onCancelled={loadBookings} />
               ))}
             </ul>
           )}
@@ -187,9 +188,33 @@ function EmptyUpcoming() {
   );
 }
 
-function UpcomingCard({ booking }: { booking: BookingSummary }) {
+const CANCELLABLE_STATUSES: BookingStatus[] = ["hold", "pending", "confirmed"];
+
+function UpcomingCard({ booking, onCancelled }: { booking: BookingSummary; onCancelled: () => void }) {
   const trainingLabel = booking.training_type?.name ?? "Training";
   const isHold = booking.status === "hold";
+
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const canCancel = CANCELLABLE_STATUSES.includes(booking.status);
+  const hoursUntil = (Date.parse(booking.starts_at) - Date.now()) / (1000 * 60 * 60);
+  const withinCutoff = hoursUntil < CANCELLATION_CUTOFF_HOURS;
+
+  async function handleCancel() {
+    if (!window.confirm(`Cancel your ${trainingLabel} session on ${formatLongDate(booking.starts_at)}?`)) {
+      return;
+    }
+    setIsCancelling(true);
+    setCancelError(null);
+    try {
+      await cancelMyBooking(booking.id);
+      onCancelled();
+    } catch (err) {
+      setIsCancelling(false);
+      setCancelError(err instanceof ApiError ? err.message : "Couldn't cancel. Please try again.");
+    }
+  }
 
   return (
     <li className="rounded bg-white p-5 shadow-soft">
@@ -223,6 +248,32 @@ function UpcomingCard({ booking }: { booking: BookingSummary }) {
         <p className="mt-3 text-sm leading-6 text-ink/68">
           <span className="font-bold text-ink/80">Your note:</span> {booking.notes}
         </p>
+      ) : null}
+
+      {cancelError ? (
+        <p className="mt-3 rounded border border-clay/20 bg-clay/5 px-3 py-2 text-xs font-semibold text-clay">
+          {cancelError}
+        </p>
+      ) : null}
+
+      {canCancel ? (
+        <div className="mt-4 flex items-center justify-end">
+          {withinCutoff ? (
+            <p className="text-xs font-semibold text-ink/45">
+              Within {CANCELLATION_CUTOFF_HOURS}h — contact your coach to cancel.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={isCancelling}
+              className="focus-ring inline-flex items-center gap-1.5 rounded border border-clay/25 px-3 py-1.5 text-sm font-bold text-clay transition hover:bg-clay/10 disabled:opacity-50"
+            >
+              {isCancelling ? <Loader2 className="animate-spin" size={14} /> : null}
+              {isCancelling ? "Cancelling…" : "Cancel session"}
+            </button>
+          )}
+        </div>
       ) : null}
     </li>
   );
