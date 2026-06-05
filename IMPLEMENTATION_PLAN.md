@@ -2,8 +2,8 @@
 
 > Companion to [PROJECT_PLAN.md](./PROJECT_PLAN.md). That file is the long-range product vision and architecture. This file is the live, actionable checklist with a working timeline.
 >
-> **Last updated:** 2026-05-30 (Phase 5 — transactional email (Resend), Sentry, and PostHog booking-funnel analytics shipped. Only backup verification (a dashboard check) remains.)
-> **Current phase:** Phase 5 — Production hardening 🟡 nearly done. Done: rate limiting, admin audit-log screen, cancellation policy + waiver gate, accessibility pass, transactional email, Sentry (web+api), PostHog funnel. Remaining: backup verification (Supabase dashboard PITR check). **Next:** Phase 5.5 — Deployment & Go-Live (Vercel web + persistent API host) — the actual deploy that makes soft-launch possible.
+> **Last updated:** 2026-06-05 (Phase 5.5 — deploy code artifacts landed: `apps/web/vercel.json` SPA rewrite, root `render.yaml` API blueprint, `.github/workflows/ci.yml` lint+typecheck, and a `PORT`-binding fix so the API works behind Render's proxy. Remaining 5.5 work is dashboard-only: create the Vercel + Render projects, set env vars, prod OAuth, and the live smoke test.)
+> **Current phase:** Phase 5.5 — Deployment & Go-Live 🟡. Code is deploy-ready; what's left needs hands on dashboards (your Vercel/Render/Google/Supabase accounts) + a live smoke test. Phase 5 itself has one box left: backup verification (Supabase dashboard PITR check). **Next:** run the dashboard runbook to stand up the Vercel web + Render API, then §5.5.5 go-live smoke test.
 > **Solo-developer timeline assumption:** ~8–12 focused hours per week. Adjust dates if cadence changes.
 
 ---
@@ -171,16 +171,17 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 > **Why this is its own phase:** Phase 5 hardens the *code*; nothing in it stands up an environment. Vercel was only ever named in `PROJECT_PLAN.md` §15 and in two unphased cross-cutting to-dos. This phase folds those in and owns the actual deploy. `PRE_LAUNCH_CHECKLIST.md` is the operational companion — this phase makes its items executable against live URLs.
 
 ### 5.5.1 Web on Vercel — *target 2026-10-21*
-- [ ] Create a Vercel project from the repo. Root directory `apps/web`, framework preset **Vite**, build `npm run build`, output `dist`.
-- [ ] Add `apps/web/vercel.json` with an SPA rewrite (all routes → `/index.html`) so React Router deep links don't 404 on refresh.
-- [ ] Set web env vars in Vercel: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL` (→ the prod API origin), `VITE_SENTRY_DSN`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`.
-- [ ] Attach the custom business domain + verify HTTPS.
+- [ ] Create a Vercel project from the repo. Root directory `apps/web`, framework preset **Vite**, build `npm run build`, output `dist`. *(Dashboard step — runbook below.)*
+- [x] Add `apps/web/vercel.json` with an SPA rewrite (all routes → `/index.html`) so React Router deep links don't 404 on refresh. *(2026-06-05 — `apps/web/vercel.json`: `framework: vite`, `buildCommand: npm run build`, `outputDirectory: dist`, catch-all rewrite to `/index.html`. Vercel serves real static assets first, then falls through to the rewrite for client routes.)*
+- [ ] Set web env vars in Vercel: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_BASE_URL` (→ the prod API origin), `VITE_SENTRY_DSN`, `VITE_POSTHOG_KEY`, `VITE_POSTHOG_HOST`. *(Dashboard step.)*
+- [ ] Attach the custom business domain + verify HTTPS. *(Dashboard step.)*
 
-### 5.5.2 API on a persistent host (Render / Fly.io / Railway — NOT Vercel) — *target 2026-10-23*
-- The API is a long-lived Express server (in-memory FreeBusy cache + rate-limit state); Vercel's serverless model doesn't fit. Deploy it to a persistent host.
-- [ ] Create the service. Build `npm run build -w @softball/api`; start `node apps/api/dist/index.js`. Wire the host's health check to `GET /api/health`.
-- [ ] Set all API env vars: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `GOOGLE_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI`, `RESEND_API_KEY`, `EMAIL_FROM`, `DISPLAY_TIMEZONE`, `SENTRY_DSN`.
-- [ ] `TRUST_PROXY=1` (behind the host's proxy, so rate limiting keys on the real client IP) and `WEB_ORIGIN=<Vercel prod domain>` (so CORS allows the deployed web app).
+### 5.5.2 API on a persistent host (Render — chosen 2026-06-05) — *target 2026-10-23*
+- The API is a long-lived Express server (in-memory FreeBusy cache + rate-limit state); Vercel's serverless model doesn't fit. Deployed to **Render** (chosen over Fly/Railway).
+- [x] Blueprint committed: root `render.yaml` — `runtime: node`, `plan: starter` (warm), `buildCommand: npm ci && npm run build -w @softball/api`, `startCommand: node apps/api/dist/index.js`, `healthCheckPath: /api/health`, `autoDeploy` on `main`. Verified locally: the build emits `apps/api/dist/index.js`. *(Creating the Render service from the blueprint is a dashboard step — runbook below.)*
+- [x] **Render-proxy fix:** the API now binds the host-injected `PORT` (falls back to `API_PORT` locally) — `config/env.ts` + `index.ts`. Without this, Render's health check can't reach the server and the deploy never goes live.
+- [ ] Set all API env vars (the `sync: false` keys in `render.yaml`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `GOOGLE_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI`, `RESEND_API_KEY`, `EMAIL_FROM`, `SENTRY_DSN`. *(Dashboard step.)*
+- [x] `TRUST_PROXY=1` + `WEB_ORIGIN` are wired in `render.yaml` (`TRUST_PROXY` hardcoded to `1`; `WEB_ORIGIN` is a `sync: false` prompt to set to the Vercel prod domain).
 
 ### 5.5.3 Production env, OAuth & secrets — *target 2026-10-24*
 - [ ] **Pin the env decision:** reuse the existing Supabase project as prod, or split staging/prod (separate Supabase project + a staging Vercel/API). Record it here.
@@ -190,9 +191,9 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 - [ ] Swap Resend to a verified domain + real `EMAIL_FROM` (carried over from Phase 5).
 
 ### 5.5.4 CI/CD — *target 2026-10-25* (folds in the cross-cutting Vercel to-dos)
-- [ ] GitHub Actions: `lint + typecheck` on PRs (no test suite yet — don't add `npm test`).
-- [ ] Vercel preview deployment per PR for the web app; production deploy on merge to `main`.
-- [ ] Confirm the existing `deploy-supabase.yml` targets the prod project (or is intentionally manual, given the outbound-5432 block on this dev machine).
+- [x] GitHub Actions: `lint + typecheck` on PRs (no test suite yet — don't add `npm test`). *(2026-06-05 — `.github/workflows/ci.yml`: `npm ci` + `npm run typecheck` across both workspaces on PRs and pushes to `main`. `lint` and `typecheck` are both tsc, so typecheck is the full static gate.)*
+- [ ] Vercel preview deployment per PR for the web app; production deploy on merge to `main`. *(Automatic once the Vercel project is connected to the GitHub repo — no code needed.)*
+- [ ] Confirm the existing `deploy-supabase.yml` targets the prod project (or is intentionally manual, given the outbound-5432 block on this dev machine). *(Dashboard/secrets check.)*
 
 ### 5.5.5 Go-live smoke test — *target 2026-10-26*
 - [ ] Run `PRE_LAUNCH_CHECKLIST.md` §6 against the **deployed** URLs: signup → book → confirmation email → calendar event; cancel >12 h (allowed) and <12 h (blocked); two-browser slot race; `/api/bookings` 429 after the rate limit.

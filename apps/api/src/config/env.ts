@@ -4,6 +4,9 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   API_PORT: z.coerce.number().int().positive().default(4000),
+  // Persistent hosts (Render/Railway/Fly) inject PORT and expect the server to
+  // bind to it. When present it takes precedence over API_PORT — see index.ts.
+  PORT: z.coerce.number().int().positive().optional(),
   WEB_ORIGIN: z.string().url().default("http://localhost:5173"),
   // Number of proxy hops to trust for client-IP resolution (Express `trust
   // proxy`). 0 = trust no proxy (correct for local dev). Set to 1 in production

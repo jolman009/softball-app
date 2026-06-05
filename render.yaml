@@ -1,0 +1,63 @@
+# Render Blueprint for the Express API (apps/api).
+# The web app deploys to Vercel (see apps/web/vercel.json); this is the
+# persistent host the API needs — Vercel's serverless model doesn't fit a
+# long-lived server with an in-memory FreeBusy cache and rate-limit state.
+#
+# To use: Render Dashboard → New → Blueprint → point at this repo. Render reads
+# this file, creates the service, and prompts for every `sync: false` secret.
+#
+# `plan: starter` keeps the service warm. `plan: free` works for testing but
+# spins down after ~15 min of inactivity (cold starts ~50s + resets the
+# in-memory caches), which is poor for a booking API serving real clients.
+services:
+  - type: web
+    name: softball-api
+    runtime: node
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: npm ci && npm run build -w @softball/api
+    startCommand: node apps/api/dist/index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # Runtime ---------------------------------------------------------
+      - key: NODE_ENV
+        value: production
+      # Behind Render's proxy — key rate limiting on the real client IP.
+      - key: TRUST_PROXY
+        value: "1"
+      # Deployment-specific URLs (set in the dashboard) -----------------
+      # The Vercel production origin, e.g. https://app.yourdomain.com (CORS).
+      - key: WEB_ORIGIN
+        sync: false
+      # Must match the URI registered on the Google OAuth client, e.g.
+      # https://softball-api.onrender.com/api/calendar/google/callback
+      - key: GOOGLE_OAUTH_REDIRECT_URI
+        sync: false
+      # Secrets (set in the dashboard, never committed) ------------------
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # MUST equal the value that encrypted existing calendar_connections
+      # rows — rotating it orphans stored Google refresh tokens.
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      # Verified-domain sender, e.g. "Softball Training <bookings@yourdomain.com>"
+      - key: EMAIL_FROM
+        sync: false
+      - key: DISPLAY_TIMEZONE
+        value: America/Chicago
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: "0"

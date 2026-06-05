@@ -7,6 +7,10 @@ initSentry();
 
 const app = createApp();
 
-app.listen(env.API_PORT, () => {
-  console.log(`Softball training API listening on http://localhost:${env.API_PORT}`);
+// Prefer the host-injected PORT (Render/Railway/Fly) so the platform's health
+// check can reach the server; fall back to API_PORT for local dev.
+const port = env.PORT ?? env.API_PORT;
+
+app.listen(port, () => {
+  console.log(`Softball training API listening on port ${port}`);
 });
