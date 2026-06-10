@@ -848,79 +848,86 @@ Tailwind CSS is the better fit because it can shape a custom sports brand withou
 
 ## 17. Phased Development Roadmap
 
-### Phase 1 - Product Foundation
+> **Status legend:** ✅ done · 🟡 partial · 🔴 not started
+>
+> This roadmap is the long-range view. For the live, box-by-box checklist with commit references and dates, see [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) (the source of truth). Status below reflects that file as of 2026-06-05.
 
-- Finalize business rules
-- Define cancellation/reschedule policy
-- Choose domain and business name
-- Define training types
-- Define availability rules
-- Create database schema
-- Create design system
+### Phase 1 - Product Foundation 🟡
 
-### Phase 2 - Web MVP
+- [ ] Finalize business rules *(still open — answers to be pinned in a `BUSINESS_RULES.md`)*
+- [x] Define cancellation/reschedule policy *(12 h client-side cancel cutoff enforced)*
+- [ ] Choose domain and business name *(still open)*
+- [x] Define training types *(seeded: Batting, Pitching, Defense/Infield, Defense/Outfield, Other)*
+- [x] Define availability rules *(`coach_settings`: buffer / min-notice / max-window)*
+- [x] Create database schema *(`supabase/migrations/202605060001_initial_schema.sql` + RLS + overlap constraint)*
+- [x] Create design system *(Tailwind tokens: ink / field / clay / chalk; AA contrast verified)*
 
-- Build landing page
-- Build booking flow
-- Build auth
-- Build client dashboard
-- Build admin dashboard shell
-- Build training type management
-- Build availability settings
+### Phase 2 - Web MVP ✅ *(shipped 2026-05-25)*
 
-### Phase 3 - Calendar Engine
+- [x] Build landing page
+- [x] Build booking flow *(wired to real API; `mockSlots` removed)*
+- [x] Build auth *(email/password + Google sign-in, password reset)*
+- [x] Build client dashboard *(real upcoming/past from `/api/me/bookings`)*
+- [x] Build admin dashboard shell *(today's schedule + week/month/revenue)*
+- [x] Build training type management
+- [x] Build availability settings
 
-- Connect Google Calendar OAuth
-- Read free/busy availability
-- Generate available slots
-- Create calendar events after booking
-- Store Google Calendar event IDs
-- Handle cancellations/reschedules
-- Prevent double-booking with database constraints
+### Phase 3 - Calendar Engine ✅
 
-### Phase 4 - Resource Library
+- [x] Connect Google Calendar OAuth *(refresh token AES-256-GCM encrypted; HMAC-signed state nonce)*
+- [x] Read free/busy availability *(FreeBusy subtracted in the availability engine, ~30 s cache)*
+- [x] Generate available slots
+- [x] Create calendar events after booking *(on `confirm`)*
+- [x] Store Google Calendar event IDs
+- [x] Handle cancellations/reschedules *(update-on-reschedule, delete-on-cancel; failure-tolerant)*
+- [x] Prevent double-booking with database constraints *(gist exclusion over hold/pending/confirmed)*
 
-- Resource upload
-- Resource categories
-- Client access rules
-- Video/PDF/link support
-- Resource detail pages
-- Admin resource manager
+### Phase 4 - Resource Library ✅
 
-### Phase 5 - Production Hardening
+- [x] Resource upload *(browser → Supabase Storage via signed upload URL)*
+- [x] Resource categories *(`resource_categories`, skill level, training type)*
+- [x] Client access rules *(`visibility` enum enforced server-side: all / booked / admin-only)*
+- [x] Video/PDF/link support
+- [x] Resource detail pages
+- [x] Admin resource manager
+- [x] **Client video review** *(Phase 4.5 — inverse direction: client uploads → coach review queue + summary)*
 
-- Email confirmations
-- Password reset
-- Email verification
-- Role-based access
-- Rate limiting
-- Error monitoring
-- Analytics
-- Backup strategy
-- Mobile responsiveness audit
-- Accessibility audit
+### Phase 5 - Production Hardening 🟡 *(only backup verification remains)*
 
-### Phase 6 - Mobile App Packaging
+- [x] Email confirmations *(Resend; confirm/reschedule/cancel — needs a verified domain before launch)*
+- [x] Password reset *(via Supabase Auth)*
+- [x] Email verification
+- [x] Role-based access *(`profiles` RLS role-lockdown)*
+- [x] Rate limiting *(auth + `/api/bookings`)*
+- [x] Error monitoring *(Sentry on web + api)*
+- [x] Analytics *(PostHog booking funnel)*
+- [ ] Backup strategy *(open — confirm Supabase PITR enabled on prod)*
+- [x] Mobile responsiveness audit
+- [x] Accessibility audit *(focus trap, skip link, ARIA, AA contrast)*
 
-- Add Capacitor
-- Configure iOS project
-- Configure Android project
-- Add app icons and splash screens
-- Configure OAuth redirects
-- Test mobile auth
-- Test booking flow on devices
-- Submit to TestFlight and Play internal testing
+> **Note:** Deployment & go-live is tracked as Phase 5.5 in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) — code artifacts (`vercel.json`, `render.yaml`, CI) are committed; the remaining work is dashboard setup (Vercel/Render projects, prod env vars, prod OAuth) + a live smoke test. See also §15 (Deployment Strategy).
 
-### Phase 7 - Payments and Growth
+### Phase 6 - Mobile App Packaging 🔴
 
-- Stripe payments
-- Packages and memberships
-- SMS reminders
-- Video upload
-- Progress tracking
-- AI-assisted coaching notes
-- Group clinics
-- Referral system
+- [ ] Add Capacitor
+- [ ] Configure iOS project
+- [ ] Configure Android project
+- [ ] Add app icons and splash screens
+- [ ] Configure OAuth redirects
+- [ ] Test mobile auth
+- [ ] Test booking flow on devices
+- [ ] Submit to TestFlight and Play internal testing
+
+### Phase 7 - Payments and Growth 🔴
+
+- [ ] Stripe payments
+- [ ] Packages and memberships
+- [ ] SMS reminders
+- [ ] Video upload *(foundation shipped in Phase 4.5; payment/AI layers pending)*
+- [ ] Progress tracking
+- [ ] AI-assisted coaching notes
+- [ ] Group clinics
+- [ ] Referral system
 
 ## 18. Implementation Notes for Calendar Sync
 
