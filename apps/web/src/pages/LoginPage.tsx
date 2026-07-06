@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { KeyRound, LogIn, Mail, RotateCcw, UserPlus } from "lucide-react";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { getRoleHomePath, useAuth } from "@/lib/auth";
+import { Alert, Button, FieldWrapper, Input } from "@/components/ui";
 
 type AuthMode = "sign-in" | "create-account" | "reset-password";
 type AccountType = "athlete" | "staff";
@@ -28,6 +29,7 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [messageType, setMessageType] = useState<"error" | "success">("error");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const returnPath = useMemo(() => getReturnPath(location.state), [location.state]);
 
@@ -45,6 +47,7 @@ export function LoginPage() {
     try {
       if (mode === "reset-password") {
         await requestPasswordReset(email);
+        setMessageType("success");
         setMessage("Check your email for a secure password reset link.");
         return;
       }
@@ -56,6 +59,7 @@ export function LoginPage() {
             : await signUpStaff({ fullName, email, password });
 
         if (result.needsEmailConfirmation) {
+          setMessageType("success");
           setMessage("Check your email to confirm the account, then sign in.");
           return;
         }
@@ -67,6 +71,7 @@ export function LoginPage() {
       const nextProfile = await signIn({ email, password });
       navigate(returnPath ?? getRoleHomePath(nextProfile), { replace: true });
     } catch (error) {
+      setMessageType("error");
       setMessage(error instanceof Error ? error.message : "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -83,6 +88,7 @@ export function LoginPage() {
         redirectTo: `${window.location.origin}${returnPath ?? "/dashboard"}`
       });
     } catch (error) {
+      setMessageType("error");
       setMessage(error instanceof Error ? error.message : "Unable to start Google sign-in.");
       setIsSubmitting(false);
     }
@@ -111,6 +117,7 @@ export function LoginPage() {
       </section>
 
       <section className="rounded bg-white p-5 shadow-soft sm:p-6">
+        {/* Segmented-control mode picker — bespoke toggle pattern, not mapped to Button primitive */}
         <div className="grid grid-cols-3 rounded bg-chalk p-1">
           {[
             { id: "sign-in", label: "Sign in" },
@@ -136,15 +143,18 @@ export function LoginPage() {
 
         {mode !== "reset-password" ? (
           <div className="mt-6">
-            <button
+            {/* Google OAuth button — secondary variant, full-width, lg size */}
+            <Button
               type="button"
+              variant="secondary"
+              size="lg"
               onClick={() => void handleGoogleSignIn()}
               disabled={isSubmitting}
-              className="focus-ring inline-flex w-full items-center justify-center gap-3 rounded border border-ink/12 bg-white px-5 py-3 font-bold text-ink transition hover:bg-chalk disabled:cursor-not-allowed disabled:opacity-60"
+              iconLeft={<GoogleIcon />}
+              className="w-full"
             >
-              <GoogleIcon />
               Continue with Google
-            </button>
+            </Button>
             <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-ink/65">
               <span className="h-px flex-1 bg-ink/10" />
               or use email
@@ -156,6 +166,7 @@ export function LoginPage() {
         <form className={mode === "reset-password" ? "mt-6" : ""} onSubmit={handleSubmit}>
           {mode === "create-account" ? (
             <>
+              {/* Segmented-control account type picker — bespoke toggle, not mapped to Button primitive */}
               <p className="text-sm font-bold uppercase tracking-[0.14em] text-ink/65">Account type</p>
               <div className="mt-2 grid grid-cols-2 rounded bg-chalk p-1">
                 {[
@@ -183,10 +194,10 @@ export function LoginPage() {
               </div>
 
               {accountType === "staff" ? (
-                <p className="mt-3 rounded border border-ink/10 bg-chalk px-3 py-2 text-xs leading-5 text-ink/65">
+                <Alert variant="info" size="sm" className="mt-3">
                   Coach and staff accounts are created as standard accounts. Admin access is
                   granted by an existing admin after sign-up.
-                </p>
+                </Alert>
               ) : null}
 
               <div
@@ -195,97 +206,97 @@ export function LoginPage() {
                   accountType === "athlete" ? "sm:grid-cols-2" : ""
                 ].join(" ")}
               >
-                <div>
-                  <label className="block text-sm font-bold" htmlFor="full-name">
-                    {accountType === "athlete" ? "Parent or athlete name" : "Your full name"}
-                  </label>
-                  <input
+                <FieldWrapper
+                  label={accountType === "athlete" ? "Parent or athlete name" : "Your full name"}
+                  htmlFor="full-name"
+                >
+                  <Input
                     id="full-name"
-                    className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                    inputSize="lg"
                     type="text"
                     value={fullName}
                     onChange={(event) => setFullName(event.target.value)}
                     required
                   />
-                </div>
+                </FieldWrapper>
                 {accountType === "athlete" ? (
-                  <div>
-                    <label className="block text-sm font-bold" htmlFor="athlete-name">
-                      Athlete name
-                    </label>
-                    <input
+                  <FieldWrapper label="Athlete name" htmlFor="athlete-name">
+                    <Input
                       id="athlete-name"
-                      className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                      inputSize="lg"
                       type="text"
                       value={athleteName}
                       onChange={(event) => setAthleteName(event.target.value)}
                       required
                     />
-                  </div>
+                  </FieldWrapper>
                 ) : null}
               </div>
             </>
           ) : null}
 
-          <label className={["block text-sm font-bold", mode === "create-account" ? "mt-5" : ""].join(" ")} htmlFor="email">
-            Email
-          </label>
-          <div className="relative mt-2">
-            <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/42" size={18} />
-            <input
+          <FieldWrapper
+            label="Email"
+            htmlFor="email"
+            className={mode === "create-account" ? "mt-5" : ""}
+          >
+            <Input
               id="email"
-              className="focus-ring w-full rounded border border-ink/10 py-3 pl-10 pr-4"
+              inputSize="lg"
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              leadingIcon={<Mail size={18} />}
               required
             />
-          </div>
+          </FieldWrapper>
 
           {mode !== "reset-password" ? (
-            <>
-              <label className="mt-5 block text-sm font-bold" htmlFor="password">
-                Password
-              </label>
-              <input
+            <FieldWrapper label="Password" htmlFor="password" className="mt-5">
+              <Input
                 id="password"
-                className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                inputSize="lg"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 minLength={6}
                 required
               />
-            </>
+            </FieldWrapper>
           ) : null}
 
           {message ? (
-            <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+            <Alert variant={messageType} role="alert" className="mt-4">
               {message}
-            </p>
+            </Alert>
           ) : null}
 
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* "Back to booking" is a <Link>, not a <button> — kept ad-hoc since Button wraps HTMLButtonElement */}
             <Link
               to="/booking"
               className="focus-ring inline-flex items-center justify-center rounded border border-ink/12 px-5 py-3 font-bold text-ink transition hover:bg-chalk"
             >
               Back to booking
             </Link>
-            <button
+            {/* Primary submit — primary variant, lg size, icon left, loading state */}
+            <Button
               type="submit"
-              className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-ink px-5 py-3 font-bold text-white transition hover:bg-clay disabled:cursor-not-allowed disabled:bg-ink/40"
-              disabled={isSubmitting}
+              variant="primary"
+              size="lg"
+              loading={isSubmitting}
+              iconLeft={
+                mode === "create-account" ? <UserPlus size={18} /> :
+                mode === "reset-password" ? <RotateCcw size={18} /> :
+                <LogIn size={18} />
+              }
             >
-              {mode === "create-account" ? <UserPlus size={18} /> : mode === "reset-password" ? <RotateCcw size={18} /> : <LogIn size={18} />}
-              {isSubmitting
-                ? "Working..."
-                : mode === "create-account"
-                  ? "Create account"
-                  : mode === "reset-password"
-                    ? "Send reset link"
-                    : "Sign in"}
-            </button>
+              {mode === "create-account"
+                ? "Create account"
+                : mode === "reset-password"
+                  ? "Send reset link"
+                  : "Sign in"}
+            </Button>
           </div>
         </form>
       </section>

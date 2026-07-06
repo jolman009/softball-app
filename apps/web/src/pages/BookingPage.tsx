@@ -27,6 +27,7 @@ import {
   type AvailabilitySlot,
   type TrainingType
 } from "@/lib/api";
+import { Alert, Button, FieldWrapper, Input } from "@/components/ui";
 
 const PENDING_BOOKING_KEY = "softball:pendingBooking";
 
@@ -371,15 +372,16 @@ export function BookingPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:py-12">
+      {/* Top-of-page banners for the Google OAuth resume flow */}
       {isResuming ? (
-        <div className="mb-6 rounded border border-field/20 bg-field/5 px-4 py-3 text-sm font-semibold text-field">
+        <Alert variant="success" className="mb-6">
           Signing you in and finishing your booking…
-        </div>
+        </Alert>
       ) : null}
       {resumeError ? (
-        <div className="mb-6 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+        <Alert variant="error" role="alert" className="mb-6">
           {resumeError}
-        </div>
+        </Alert>
       ) : null}
       <div className="grid gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
         <section className="lg:sticky lg:top-24">
@@ -434,19 +436,22 @@ export function BookingPage() {
             </div>
 
             {isLoadingTrainingTypes ? (
-              <p className="mt-5 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
+              <Alert variant="info" size="lg" className="mt-5">
                 Loading training types…
-              </p>
+              </Alert>
             ) : trainingTypesError ? (
-              <p className="mt-5 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+              <Alert variant="error" role="alert" className="mt-5">
                 {trainingTypesError}
-              </p>
+              </Alert>
             ) : (
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 {trainingTypes.map((type) => {
                   const isSelected = trainingTypeId === type.id;
 
                   return (
+                    // Training-type toggle button — bespoke field-green selected state
+                    // that doesn't map to any Button variant (full-height card with
+                    // border-field/bg-field active vs border-ink/10 rest). Kept ad-hoc.
                     <button
                       key={type.id}
                       type="button"
@@ -472,26 +477,26 @@ export function BookingPage() {
             )}
 
             {isOtherType ? (
-              <div className="mt-4">
-                <label className="block text-sm font-bold" htmlFor="other-training">
-                  Tell us what you want to work on
-                </label>
-                <input
+              <FieldWrapper
+                label="Tell us what you want to work on"
+                htmlFor="other-training"
+                errorText={isOtherMissing ? "A short note is required for Other." : undefined}
+                className="mt-4"
+              >
+                <Input
                   id="other-training"
-                  className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                  inputSize="lg"
                   type="text"
                   value={otherTraining}
                   onChange={(event) => {
                     setOtherTraining(event.target.value);
                     setFormMessage(null);
                   }}
+                  hasError={isOtherMissing}
                   placeholder="Example: catching, baserunning, tryout prep"
                   required
                 />
-                {isOtherMissing ? (
-                  <p className="mt-2 text-sm font-semibold text-clay">A short note is required for Other.</p>
-                ) : null}
-              </div>
+              </FieldWrapper>
             ) : null}
           </section>
 
@@ -504,39 +509,39 @@ export function BookingPage() {
               </div>
             </div>
 
-            <label className="mt-5 block text-sm font-bold" htmlFor="booking-date">
-              Lesson date
-            </label>
-            <input
-              id="booking-date"
-              className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3 sm:max-w-xs"
-              type="date"
-              value={selectedDate}
-              min={todayIso}
-              onChange={(event) => {
-                setSelectedDate(event.target.value);
-                setSelectedSlotKey(null);
-                setFormMessage(null);
-              }}
-              required
-            />
+            <FieldWrapper label="Lesson date" htmlFor="booking-date" className="mt-5">
+              <Input
+                id="booking-date"
+                inputSize="lg"
+                type="date"
+                value={selectedDate}
+                min={todayIso}
+                onChange={(event) => {
+                  setSelectedDate(event.target.value);
+                  setSelectedSlotKey(null);
+                  setFormMessage(null);
+                }}
+                className="sm:max-w-xs"
+                required
+              />
+            </FieldWrapper>
 
             {!selectedDate || !trainingTypeId ? (
-              <div className="mt-5 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
+              <Alert variant="info" size="lg" className="mt-5">
                 Pick a training type and a date to see available times.
-              </div>
+              </Alert>
             ) : isLoadingSlots ? (
-              <div className="mt-5 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
+              <Alert variant="info" size="lg" className="mt-5">
                 Looking up available times…
-              </div>
+              </Alert>
             ) : slotsError ? (
-              <p className="mt-5 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+              <Alert variant="error" role="alert" className="mt-5">
                 {slotsError}
-              </p>
+              </Alert>
             ) : availableSlots.length === 0 ? (
-              <div className="mt-5 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
+              <Alert variant="info" size="lg" className="mt-5">
                 No openings on this date. Try another day.
-              </div>
+              </Alert>
             ) : (
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 {availableSlots.map((slot) => {
@@ -544,6 +549,9 @@ export function BookingPage() {
                   const isSelected = selectedSlotKey === key;
 
                   return (
+                    // Slot toggle button — bespoke clay selected state that doesn't
+                    // map to any Button variant (full-height card with inner layout).
+                    // Kept ad-hoc; aria-pressed preserved.
                     <button
                       key={key}
                       type="button"
@@ -592,16 +600,23 @@ export function BookingPage() {
             </div>
           </section>
 
-          {formMessage ? <p className="mt-4 text-sm font-semibold text-clay">{formMessage}</p> : null}
+          {formMessage ? (
+            <Alert variant="error" role="alert" className="mt-4">
+              {formMessage}
+            </Alert>
+          ) : null}
 
-          <button
+          {/* "Continue to confirm" — primary variant, lg size, icon right */}
+          <Button
             type="submit"
-            className="focus-ring mt-6 inline-flex w-full items-center justify-center gap-2 rounded bg-ink px-5 py-3 font-bold text-white transition hover:bg-clay disabled:cursor-not-allowed disabled:bg-ink/35 sm:w-auto"
+            variant="primary"
+            size="lg"
+            iconRight={<ArrowRight size={18} />}
             disabled={!canContinue}
+            className="mt-6 w-full sm:w-auto"
           >
             Continue to confirm
-            <ArrowRight size={18} />
-          </button>
+          </Button>
         </form>
       </div>
 
@@ -628,6 +643,8 @@ export function BookingPage() {
                   Sign in before confirming.
                 </h2>
               </div>
+              {/* Icon-only close button — square 10×10 chalk bg, no text; doesn't map to
+                  any Button variant cleanly (no label, custom dimensions). Kept ad-hoc. */}
               <button
                 type="button"
                 className="focus-ring flex h-10 w-10 items-center justify-center rounded bg-chalk text-ink transition hover:bg-steel"
@@ -640,21 +657,25 @@ export function BookingPage() {
             </div>
 
             <div className="p-5">
-              <button
+              {/* Google OAuth button — secondary variant, full-width, lg size */}
+              <Button
                 type="button"
+                variant="secondary"
+                size="lg"
                 onClick={() => void handleGoogleConfirm()}
                 disabled={!canContinue || !waiverAccepted || isAuthSubmitting}
-                className="focus-ring inline-flex w-full items-center justify-center gap-3 rounded border border-ink/12 bg-white px-5 py-3 font-bold text-ink transition hover:bg-chalk disabled:cursor-not-allowed disabled:opacity-60"
+                iconLeft={<GoogleIcon />}
+                className="w-full"
               >
-                <GoogleIcon />
                 Continue with Google
-              </button>
+              </Button>
               <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-ink/65">
                 <span className="h-px flex-1 bg-ink/10" />
                 or use email
                 <span className="h-px flex-1 bg-ink/10" />
               </div>
 
+              {/* Segmented-control sign-in/create-account picker — bespoke toggle, not mapped to Button */}
               <div className="grid grid-cols-2 rounded bg-chalk p-1">
                 <button
                   type="button"
@@ -696,77 +717,58 @@ export function BookingPage() {
               <div className="mt-5 grid gap-4">
                 {authMode === "create-account" ? (
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-bold" htmlFor="full-name">
-                        Parent or athlete name
-                      </label>
-                      <input
+                    <FieldWrapper label="Parent or athlete name" htmlFor="full-name">
+                      <Input
                         id="full-name"
-                        className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                        inputSize="lg"
                         type="text"
                         value={authName}
                         onChange={(event) => setAuthName(event.target.value)}
                         required
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold" htmlFor="athlete-name">
-                        Athlete name
-                      </label>
-                      <input
+                    </FieldWrapper>
+                    <FieldWrapper label="Athlete name" htmlFor="athlete-name">
+                      <Input
                         id="athlete-name"
-                        className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
+                        inputSize="lg"
                         type="text"
                         value={authAthleteName}
                         onChange={(event) => setAuthAthleteName(event.target.value)}
                         required
                       />
-                    </div>
+                    </FieldWrapper>
                   </div>
                 ) : null}
-                <div>
-                  <label className="block text-sm font-bold" htmlFor="booking-email">
-                    Email
-                  </label>
-                  <div className="relative mt-2">
-                    <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/42" size={18} />
-                    <input
-                      id="booking-email"
-                      className="focus-ring w-full rounded border border-ink/10 py-3 pl-10 pr-4"
-                      type="email"
-                      value={authEmail}
-                      onChange={(event) => {
-                        setAuthEmail(event.target.value);
-                        setAuthMessage(null);
-                      }}
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold" htmlFor="booking-password">
-                    Password
-                  </label>
-                  <div className="relative mt-2">
-                    <LockKeyhole
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/42"
-                      size={18}
-                    />
-                    <input
-                      id="booking-password"
-                      className="focus-ring w-full rounded border border-ink/10 py-3 pl-10 pr-4"
-                      type="password"
-                      value={authPassword}
-                      onChange={(event) => {
-                        setAuthPassword(event.target.value);
-                        setAuthMessage(null);
-                      }}
-                      minLength={6}
-                      required
-                    />
-                  </div>
-                </div>
+                <FieldWrapper label="Email" htmlFor="booking-email">
+                  <Input
+                    id="booking-email"
+                    inputSize="lg"
+                    type="email"
+                    value={authEmail}
+                    onChange={(event) => {
+                      setAuthEmail(event.target.value);
+                      setAuthMessage(null);
+                    }}
+                    leadingIcon={<Mail size={18} />}
+                    placeholder="you@example.com"
+                    required
+                  />
+                </FieldWrapper>
+                <FieldWrapper label="Password" htmlFor="booking-password">
+                  <Input
+                    id="booking-password"
+                    inputSize="lg"
+                    type="password"
+                    value={authPassword}
+                    onChange={(event) => {
+                      setAuthPassword(event.target.value);
+                      setAuthMessage(null);
+                    }}
+                    leadingIcon={<LockKeyhole size={18} />}
+                    minLength={6}
+                    required
+                  />
+                </FieldWrapper>
               </div>
 
               <label className="mt-5 flex items-start gap-3 rounded border border-ink/10 bg-chalk/60 p-3">
@@ -784,28 +786,33 @@ export function BookingPage() {
               </label>
 
               {authMessage ? (
-                <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+                <Alert variant="error" role="alert" className="mt-4">
                   {authMessage}
-                </p>
+                </Alert>
               ) : null}
 
               <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <button
+                {/* "Keep editing" — secondary variant, lg size */}
+                <Button
                   type="button"
-                  className="focus-ring inline-flex items-center justify-center rounded border border-ink/12 px-5 py-3 font-bold text-ink transition hover:bg-chalk"
+                  variant="secondary"
+                  size="lg"
                   onClick={() => setShowAuthModal(false)}
                 >
                   Keep editing
-                </button>
-                <button
+                </Button>
+                {/* "Continue" — positive variant, lg size, icon left, loading state */}
+                <Button
                   type="button"
-                  className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-field px-5 py-3 font-bold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-field/40"
+                  variant="positive"
+                  size="lg"
+                  loading={isAuthSubmitting}
+                  iconLeft={authMode === "create-account" ? <UserPlus size={18} /> : <CreditCard size={18} />}
                   onClick={() => void handleConfirm()}
                   disabled={!canConfirm || isAuthSubmitting}
                 >
-                  {authMode === "create-account" ? <UserPlus size={18} /> : <CreditCard size={18} />}
                   {isAuthSubmitting ? "Working..." : "Continue"}
-                </button>
+                </Button>
               </div>
             </div>
           </div>

@@ -2,9 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Base ────────────────────────────────────────────────────────────────── */
+
 :root {
-  color: #16191f;
-  background: #f6f2e8;
+  /* Brand colors as CSS custom properties for non-Tailwind usage (e.g. SVGs) */
+  --color-ink:   #16191f;
+  --color-field: #2f6f4e;
+  --color-chalk: #f6f2e8;
+  --color-clay:  #b5532f;
+  --color-steel: #d5dee5;
+
+  color: var(--color-ink);
+  background: var(--color-chalk);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,6 +26,7 @@ body {
   min-height: 100vh;
 }
 
+/* Ensure form controls inherit Inter from the root */
 button,
 input,
 select,
@@ -24,10 +34,33 @@ textarea {
   font: inherit;
 }
 
+/* ── Utility classes ─────────────────────────────────────────────────────── */
+
+/**
+ * .page-shell
+ * Applied to the outermost <div> in AppLayout. Ensures every screen gets the
+ * warm chalk background and ink text as a baseline.
+ */
 .page-shell {
   @apply min-h-screen bg-chalk text-ink;
 }
 
+/**
+ * .focus-ring
+ * System-wide keyboard focus indicator. 2 px clay outline at 2 px offset.
+ * Satisfies WCAG 2.1 SC 2.4.7. Applied to every interactive element:
+ *   - <Button> via the primitive
+ *   - <Input> / <Textarea> / <Select> via the primitive
+ *   - <a>, <button>, <NavLink> in AppLayout and one-off usages
+ *
+ * Clay (#b5532f) achieves ≥ 3:1 contrast against the white/chalk surfaces
+ * where it most commonly appears.
+ */
 .focus-ring {
   @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clay;
 }
+
+/**
+ * .sr-only + focusable: the skip-nav link pattern used in AppLayout.
+ * Tailwind's sr-only + focus:not-sr-only pair covers this; no custom class needed.
+ */
