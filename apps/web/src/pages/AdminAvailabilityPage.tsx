@@ -20,6 +20,7 @@ import {
   type CoachSettings,
   type CoachSettingsInput
 } from "@/lib/api";
+import { Alert, Badge, Button, Input, Select } from "@/components/ui";
 
 const DAYS = [
   { value: 0, short: "Sun", long: "Sunday" },
@@ -164,9 +165,9 @@ function WindowsSection() {
       </p>
 
       {error ? (
-        <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="mt-4">
           {error}
-        </p>
+        </Alert>
       ) : null}
 
       <div className="mt-6 overflow-hidden rounded bg-white shadow-soft">
@@ -193,6 +194,8 @@ function WindowsSection() {
                   <span className="text-xs text-ink/50">{window.timezone}</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Bespoke status toggle — a pill that flips active/paused state, not a
+                      standard Button action; the field-tinted active state is unique to it. */}
                   <button
                     type="button"
                     onClick={() => void handleToggleActive(window)}
@@ -205,6 +208,8 @@ function WindowsSection() {
                   >
                     {window.active ? "Active" : "Paused"}
                   </button>
+                  {/* Icon-only destructive affordance — kept ad-hoc; Button primitive
+                      targets labeled actions, not compact trash-icon controls. */}
                   <button
                     type="button"
                     onClick={() => void handleDelete(window)}
@@ -224,14 +229,14 @@ function WindowsSection() {
         {showForm ? (
           <WindowForm onCancel={() => setShowForm(false)} onSubmit={handleCreate} />
         ) : (
-          <button
+          <Button
             type="button"
+            variant="primary"
+            iconLeft={<Plus size={16} />}
             onClick={() => setShowForm(true)}
-            className="focus-ring inline-flex items-center gap-2 rounded bg-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-clay"
           >
-            <Plus size={16} />
             Add window
-          </button>
+          </Button>
         )}
       </div>
     </section>
@@ -278,69 +283,54 @@ function WindowForm({
     >
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Day
-        <select
-          value={day}
-          onChange={(e) => setDay(Number(e.target.value))}
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
-        >
+        <Select value={day} onChange={(e) => setDay(Number(e.target.value))}>
           {DAYS.map((d) => (
             <option key={d.value} value={d.value}>
               {d.long}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Start
-        <input
+        <Input
           type="time"
           value={start}
           onChange={(e) => setStart(e.target.value)}
           required
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         End
-        <input
+        <Input
           type="time"
           value={end}
           onChange={(e) => setEnd(e.target.value)}
           required
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Timezone
-        <input
+        <Input
           type="text"
           value={tz}
           onChange={(e) => setTz(e.target.value)}
           required
           placeholder="America/Chicago"
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
       <div className="flex items-end gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-field/40"
-        >
-          {submitting ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="focus-ring inline-flex items-center justify-center rounded border border-ink/12 px-3 py-2 text-sm font-bold text-ink transition hover:bg-chalk"
-        >
+        <Button type="submit" variant="positive" loading={submitting}>
+          Save
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
       {error ? (
-        <p className="rounded border border-clay/20 bg-clay/5 px-3 py-2 text-sm font-semibold text-clay sm:col-span-5">
+        <Alert variant="error" size="sm" role="alert" className="sm:col-span-5">
           {error}
-        </p>
+        </Alert>
       ) : null}
     </form>
   );
@@ -408,9 +398,9 @@ function ExceptionsSection() {
       </p>
 
       {error ? (
-        <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="mt-4">
           {error}
-        </p>
+        </Alert>
       ) : null}
 
       <div className="mt-6 overflow-hidden rounded bg-white shadow-soft">
@@ -425,14 +415,12 @@ function ExceptionsSection() {
             {exceptions.map((ex) => (
               <li key={ex.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    className={[
-                      "shrink-0 rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-                      ex.exception_type === "blocked" ? "bg-clay text-white" : "bg-field text-white"
-                    ].join(" ")}
+                  <Badge
+                    variant={ex.exception_type === "blocked" ? "destructive" : "positive-solid"}
+                    className="shrink-0"
                   >
                     {ex.exception_type === "blocked" ? "Block" : "Special"}
-                  </span>
+                  </Badge>
                   <div className="min-w-0">
                     <p className="truncate font-bold">
                       {formatDateTime(ex.starts_at)} → {formatDateTime(ex.ends_at)}
@@ -440,6 +428,7 @@ function ExceptionsSection() {
                     {ex.reason ? <p className="truncate text-sm text-ink/60">{ex.reason}</p> : null}
                   </div>
                 </div>
+                {/* Icon-only destructive affordance — kept ad-hoc; see WindowsSection note. */}
                 <button
                   type="button"
                   onClick={() => void handleDelete(ex)}
@@ -458,14 +447,14 @@ function ExceptionsSection() {
         {showForm ? (
           <ExceptionForm onCancel={() => setShowForm(false)} onSubmit={handleCreate} />
         ) : (
-          <button
+          <Button
             type="button"
+            variant="primary"
+            iconLeft={<Plus size={16} />}
             onClick={() => setShowForm(true)}
-            className="focus-ring inline-flex items-center gap-2 rounded bg-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-clay"
           >
-            <Plus size={16} />
             Add exception
-          </button>
+          </Button>
         )}
       </div>
     </section>
@@ -527,66 +516,54 @@ function ExceptionForm({
     >
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Type
-        <select
+        <Select
           value={type}
           onChange={(e) => setType(e.target.value as AvailabilityExceptionType)}
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         >
           <option value="blocked">Block</option>
           <option value="special_opening">Special opening</option>
-        </select>
+        </Select>
       </label>
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Starts
-        <input
+        <Input
           type="datetime-local"
           value={startsLocal}
           onChange={(e) => setStartsLocal(e.target.value)}
           required
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Ends
-        <input
+        <Input
           type="datetime-local"
           value={endsLocal}
           onChange={(e) => setEndsLocal(e.target.value)}
           required
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Reason (optional)
-        <input
+        <Input
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Vacation, tournament, etc."
           maxLength={500}
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
       <div className="flex items-end gap-2">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-field/40"
-        >
-          {submitting ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="focus-ring inline-flex items-center justify-center rounded border border-ink/12 px-3 py-2 text-sm font-bold text-ink transition hover:bg-chalk"
-        >
+        <Button type="submit" variant="positive" loading={submitting}>
+          Save
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
       {error ? (
-        <p className="rounded border border-clay/20 bg-clay/5 px-3 py-2 text-sm font-semibold text-clay sm:col-span-5">
+        <Alert variant="error" size="sm" role="alert" className="sm:col-span-5">
           {error}
-        </p>
+        </Alert>
       ) : null}
     </form>
   );
@@ -673,14 +650,14 @@ function SettingsSection() {
       </p>
 
       {error ? (
-        <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="mt-4">
           {error}
-        </p>
+        </Alert>
       ) : null}
       {notice ? (
-        <p className="mt-4 rounded border border-field/20 bg-field/5 px-4 py-2 text-sm font-semibold text-field">
+        <Alert variant="success" size="sm" role="alert" className="mt-4">
           {notice}
-        </p>
+        </Alert>
       ) : null}
 
       <form
@@ -719,13 +696,9 @@ function SettingsSection() {
         />
 
         <div className="flex items-center justify-end gap-2 sm:col-span-3">
-          <button
-            type="submit"
-            disabled={!dirty || submitting}
-            className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-field/40"
-          >
-            {submitting ? "Saving…" : "Save rules"}
-          </button>
+          <Button type="submit" variant="positive" loading={submitting} disabled={!dirty}>
+            Save rules
+          </Button>
         </div>
       </form>
     </section>
@@ -755,14 +728,14 @@ function SettingField({
     <label className="flex flex-col gap-1">
       <span className="text-xs font-bold uppercase tracking-wide text-ink/65">{label}</span>
       <span className="flex items-center gap-2">
-        <input
+        <Input
           type="number"
           min={min}
           max={max}
           value={loading ? "" : value ?? ""}
           onChange={(e) => onChange(Number(e.target.value))}
           disabled={loading}
-          className="focus-ring w-24 rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink disabled:bg-chalk"
+          className="w-24"
         />
         <span className="text-sm font-semibold text-ink/60">{unit}</span>
       </span>
