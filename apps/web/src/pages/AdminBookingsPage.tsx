@@ -16,6 +16,7 @@ import {
   type BookingStatus,
   type TrainingType
 } from "@/lib/api";
+import { Alert, Badge, Button, Input, Select, type BadgeVariant } from "@/components/ui";
 
 function formatError(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -53,14 +54,14 @@ const STATUS_FILTERS: { value: BookingStatus | "all"; label: string }[] = [
   { value: "no_show", label: "No-show" }
 ];
 
-const STATUS_STYLES: Record<BookingStatus, string> = {
-  hold: "bg-amber-100 text-amber-800",
-  pending: "bg-amber-100 text-amber-800",
-  confirmed: "bg-field/15 text-field",
-  completed: "bg-ink text-white",
-  rescheduled: "bg-chalk text-ink/70",
-  cancelled: "bg-clay/15 text-clay",
-  no_show: "bg-clay/15 text-clay"
+const STATUS_VARIANTS: Record<BookingStatus, BadgeVariant> = {
+  hold: "warning",
+  pending: "warning",
+  confirmed: "positive",
+  completed: "primary",
+  rescheduled: "default",
+  cancelled: "destructive-light",
+  no_show: "destructive-light"
 };
 
 const ACTIONABLE: BookingStatus[] = ["hold", "pending", "confirmed"];
@@ -137,14 +138,13 @@ export function AdminBookingsPage() {
             </button>
           ))}
         </div>
-        <button
-          type="button"
+        <Button
+          variant="positive"
           onClick={() => setShowNew((s) => !s)}
-          className="focus-ring inline-flex items-center gap-2 rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink"
+          iconLeft={showNew ? <X size={16} /> : <CalendarPlus size={16} />}
         >
-          {showNew ? <X size={16} /> : <CalendarPlus size={16} />}
           {showNew ? "Close" : "New booking"}
-        </button>
+        </Button>
       </div>
 
       {showNew ? (
@@ -157,9 +157,9 @@ export function AdminBookingsPage() {
       ) : null}
 
       {error ? (
-        <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="mt-4">
           {error}
-        </p>
+        </Alert>
       ) : null}
 
       <div className="mt-6 overflow-hidden rounded bg-white shadow-soft">
@@ -214,14 +214,9 @@ function BookingRow({
     <li className="flex flex-col gap-3 px-4 py-3.5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span
-            className={[
-              "shrink-0 rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-              STATUS_STYLES[booking.status]
-            ].join(" ")}
-          >
+          <Badge variant={STATUS_VARIANTS[booking.status]} className="shrink-0">
             {booking.status.replace("_", " ")}
-          </span>
+          </Badge>
           <div className="min-w-0">
             <p className="truncate font-bold">
               {booking.training_type?.name ?? "Training"}
@@ -236,22 +231,42 @@ function BookingRow({
 
         {actionable ? (
           <div className="flex flex-wrap items-center gap-1.5">
-            <ActionButton onClick={() => void run(() => completeBooking(booking.id))} disabled={busy}>
-              <Check size={14} />
+            <Button
+              variant="secondary"
+              size="sm"
+              iconLeft={<Check size={14} />}
+              onClick={() => void run(() => completeBooking(booking.id))}
+              disabled={busy}
+            >
               Complete
-            </ActionButton>
-            <ActionButton onClick={() => void run(() => markNoShow(booking.id))} disabled={busy}>
-              <Clock size={14} />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              iconLeft={<Clock size={14} />}
+              onClick={() => void run(() => markNoShow(booking.id))}
+              disabled={busy}
+            >
               No-show
-            </ActionButton>
-            <ActionButton onClick={() => setRescheduling((r) => !r)} disabled={busy}>
-              <CalendarClock size={14} />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              iconLeft={<CalendarClock size={14} />}
+              onClick={() => setRescheduling((r) => !r)}
+              disabled={busy}
+            >
               Reschedule
-            </ActionButton>
-            <ActionButton onClick={handleCancel} disabled={busy} danger>
-              <X size={14} />
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              iconLeft={<X size={14} />}
+              onClick={handleCancel}
+              disabled={busy}
+            >
               Cancel
-            </ActionButton>
+            </Button>
           </div>
         ) : null}
       </div>
@@ -268,34 +283,6 @@ function BookingRow({
         />
       ) : null}
     </li>
-  );
-}
-
-function ActionButton({
-  children,
-  onClick,
-  disabled,
-  danger
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={[
-        "focus-ring inline-flex items-center gap-1 rounded border px-2.5 py-1.5 text-xs font-bold transition disabled:opacity-50",
-        danger
-          ? "border-clay/30 text-clay hover:bg-clay/10"
-          : "border-ink/15 text-ink/70 hover:bg-chalk"
-      ].join(" ")}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -333,28 +320,18 @@ function RescheduleForm({
     <div className="flex flex-wrap items-end gap-2 rounded bg-chalk/50 px-3 py-3">
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         New start
-        <input
+        <Input
           type="datetime-local"
           value={start}
           onChange={(e) => setStart(e.target.value)}
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
-      <button
-        type="button"
-        onClick={() => void handleSave()}
-        disabled={saving}
-        className="focus-ring rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:bg-field/40"
-      >
+      <Button variant="positive" onClick={() => void handleSave()} loading={saving}>
         {saving ? "Saving…" : "Save"}
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="focus-ring rounded border border-ink/12 px-3 py-2 text-sm font-bold text-ink transition hover:bg-white"
-      >
+      </Button>
+      <Button variant="secondary" onClick={onCancel}>
         Cancel
-      </button>
+      </Button>
     </div>
   );
 }
@@ -411,69 +388,54 @@ function NewBookingForm({ onCreated }: { onCreated: () => void }) {
     <form onSubmit={handleSubmit} className="mt-4 grid gap-3 rounded bg-white p-4 shadow-soft sm:grid-cols-2">
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Training type
-        <select
-          value={trainingTypeId}
-          onChange={(e) => setTrainingTypeId(e.target.value)}
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
-        >
+        <Select value={trainingTypeId} onChange={(e) => setTrainingTypeId(e.target.value)}>
           {trainingTypes.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name} ({t.default_duration_minutes} min)
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Client (optional)
-        <select
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
-        >
+        <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">— Walk-in / unassigned —</option>
           {clients.map((c) => (
             <option key={c.id} value={c.id}>
               {c.athlete_name}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Start
-        <input
+        <Input
           type="datetime-local"
           value={start}
           onChange={(e) => setStart(e.target.value)}
           required
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
         />
       </label>
       <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
         Notes (optional)
-        <input
+        <Input
           type="text"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           maxLength={1000}
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-ink"
         />
       </label>
 
       {error ? (
-        <p className="rounded border border-clay/20 bg-clay/5 px-3 py-2 text-sm font-semibold text-clay sm:col-span-2">
+        <Alert variant="error" size="sm" role="alert" className="sm:col-span-2">
           {error}
-        </p>
+        </Alert>
       ) : null}
 
       <div className="sm:col-span-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="focus-ring inline-flex items-center gap-2 rounded bg-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-clay disabled:bg-ink/40"
-        >
-          <Plus size={16} />
+        <Button type="submit" variant="primary" loading={saving} iconLeft={<Plus size={16} />}>
           {saving ? "Creating…" : "Create booking"}
-        </button>
+        </Button>
         <span className="ml-3 text-xs text-ink/50">
           {selectedType ? `Ends ${selectedType.default_duration_minutes} min after start. Status: confirmed.` : ""}
         </span>
