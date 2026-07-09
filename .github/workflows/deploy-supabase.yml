@@ -1,9 +1,10 @@
 name: Deploy Supabase
 
+# Migrations are applied manually via the Supabase dashboard SQL editor
+# (outbound port 5432 is blocked from the dev machine, and CI's access token
+# isn't authorized for the project). This workflow is therefore run-on-demand
+# only — trigger it from the Actions tab when you want CI to push migrations.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
