@@ -5,7 +5,7 @@ export function LandingPage() {
   return (
     <main>
       <section className="relative isolate overflow-hidden bg-ink text-white">
-        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(47,111,78,0.95),rgba(22,25,31,0.74)),url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1800&q=80')] bg-cover bg-center" />
+        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(47,111,78,0.95),rgba(22,25,31,0.74)),url('https://images.unsplash.com/photo-1529768167801-9173d94c2a42?auto=format&fit=crop&w=1800&q=80')] bg-cover bg-center" />
         <div className="relative mx-auto flex min-h-[calc(100svh-73px)] max-w-6xl items-center px-4 py-20">
           <div className="max-w-2xl">
             <p className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-white/75">
