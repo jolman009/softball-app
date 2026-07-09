@@ -18,6 +18,7 @@ import {
   type ResourceVisibility,
   type TrainingType
 } from "@/lib/api";
+import { Alert, Badge, Button, Input, Select, Textarea, type BadgeVariant } from "@/components/ui";
 
 const RESOURCE_TYPES: { value: ResourceType; label: string }[] = [
   { value: "video", label: "Video" },
@@ -63,17 +64,11 @@ function typeIcon(type: ResourceType) {
   }
 }
 
-function visibilityBadge(v: ResourceVisibility): string {
-  switch (v) {
-    case "all_clients":
-      return "bg-field/15 text-field";
-    case "booked_clients":
-      return "bg-ink text-white";
-    case "admin_only":
-    default:
-      return "bg-clay/15 text-clay";
-  }
-}
+const VISIBILITY_VARIANTS: Record<ResourceVisibility, BadgeVariant> = {
+  all_clients: "positive",
+  booked_clients: "primary",
+  admin_only: "destructive-light"
+};
 
 export function AdminResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
@@ -124,9 +119,9 @@ export function AdminResourcesPage() {
       </header>
 
       {error ? (
-        <p className="mt-6 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="mt-6">
           {error}
-        </p>
+        </Alert>
       ) : null}
 
       <ResourceForm
@@ -166,9 +161,6 @@ export function AdminResourcesPage() {
   );
 }
 
-const SELECT_CLASS =
-  "focus-ring w-full rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-ink";
-const INPUT_CLASS = SELECT_CLASS;
 const LABEL_CLASS = "block text-xs font-bold uppercase tracking-wide text-ink/65";
 
 function ResourceForm({
@@ -278,9 +270,9 @@ function ResourceForm({
           <label className={LABEL_CLASS} htmlFor="resource-type">
             Type
           </label>
-          <select
+          <Select
             id="resource-type"
-            className={SELECT_CLASS + " mt-1"}
+            className="mt-1"
             value={resourceType}
             onChange={(e) => setResourceType(e.target.value as ResourceType)}
           >
@@ -289,16 +281,16 @@ function ResourceForm({
                 {t.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
           <label className={LABEL_CLASS} htmlFor="resource-title">
             Title
           </label>
-          <input
+          <Input
             id="resource-title"
-            className={INPUT_CLASS + " mt-1"}
+            className="mt-1"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Tee work — load & stride"
@@ -326,10 +318,10 @@ function ResourceForm({
             <label className={LABEL_CLASS} htmlFor="resource-url">
               URL
             </label>
-            <input
+            <Input
               id="resource-url"
               type="url"
-              className={INPUT_CLASS + " mt-1"}
+              className="mt-1"
               value={externalUrl}
               onChange={(e) => setExternalUrl(e.target.value)}
               placeholder="https://…"
@@ -340,9 +332,9 @@ function ResourceForm({
             <label className={LABEL_CLASS} htmlFor="resource-body">
               Note text
             </label>
-            <textarea
+            <Textarea
               id="resource-body"
-              className={INPUT_CLASS + " mt-1 min-h-[100px] resize-y leading-6"}
+              className="mt-1 min-h-[100px]"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write the drill steps, cues, or reminders…"
@@ -354,9 +346,9 @@ function ResourceForm({
           <label className={LABEL_CLASS} htmlFor="resource-description">
             Description <span className="font-semibold normal-case text-ink/65">(optional)</span>
           </label>
-          <textarea
+          <Textarea
             id="resource-description"
-            className={INPUT_CLASS + " mt-1 min-h-[60px] resize-y leading-6"}
+            className="mt-1 min-h-[60px]"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="A sentence to help clients understand what this is."
@@ -367,9 +359,9 @@ function ResourceForm({
           <label className={LABEL_CLASS} htmlFor="resource-category">
             Category
           </label>
-          <select
+          <Select
             id="resource-category"
-            className={SELECT_CLASS + " mt-1"}
+            className="mt-1"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
           >
@@ -379,16 +371,16 @@ function ResourceForm({
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
           <label className={LABEL_CLASS} htmlFor="resource-skill">
             Skill level
           </label>
-          <select
+          <Select
             id="resource-skill"
-            className={SELECT_CLASS + " mt-1"}
+            className="mt-1"
             value={skillLevel}
             onChange={(e) => setSkillLevel(e.target.value as ResourceSkillLevel)}
           >
@@ -397,16 +389,16 @@ function ResourceForm({
                 {s.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
           <label className={LABEL_CLASS} htmlFor="resource-session">
             Session type <span className="font-semibold normal-case text-ink/65">(optional)</span>
           </label>
-          <select
+          <Select
             id="resource-session"
-            className={SELECT_CLASS + " mt-1"}
+            className="mt-1"
             value={sessionType}
             onChange={(e) => setSessionType(e.target.value)}
           >
@@ -416,16 +408,16 @@ function ResourceForm({
                 {t.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
           <label className={LABEL_CLASS} htmlFor="resource-visibility">
             Visibility
           </label>
-          <select
+          <Select
             id="resource-visibility"
-            className={SELECT_CLASS + " mt-1"}
+            className="mt-1"
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as ResourceVisibility)}
           >
@@ -434,27 +426,22 @@ function ResourceForm({
                 {v.label}
               </option>
             ))}
-          </select>
+          </Select>
           <p className="mt-1 text-xs text-ink/50">
             {VISIBILITIES.find((v) => v.value === visibility)?.hint}
           </p>
         </div>
 
         {formError ? (
-          <p className="sm:col-span-2 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+          <Alert variant="error" size="sm" role="alert" className="sm:col-span-2">
             {formError}
-          </p>
+          </Alert>
         ) : null}
 
         <div className="sm:col-span-2">
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="focus-ring inline-flex items-center gap-2 rounded bg-ink px-5 py-3 font-bold text-white transition hover:bg-clay disabled:opacity-60"
-          >
-            {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />}
+          <Button type="submit" variant="primary" size="lg" loading={isSaving} iconLeft={<Upload size={18} />}>
             {isSaving ? "Saving…" : "Add resource"}
-          </button>
+          </Button>
         </div>
       </form>
     </section>
@@ -523,14 +510,9 @@ function ResourceRow({
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <span
-          className={[
-            "rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-            visibilityBadge(resource.visibility)
-          ].join(" ")}
-        >
+        <Badge variant={VISIBILITY_VARIANTS[resource.visibility]}>
           {resource.visibility.replace("_", " ")}
-        </span>
+        </Badge>
         {href ? (
           <a
             href={href}
@@ -635,9 +617,9 @@ function ResourceEditForm({
         <label className={LABEL_CLASS} htmlFor={`edit-title-${resource.id}`}>
           Title
         </label>
-        <input
+        <Input
           id={`edit-title-${resource.id}`}
-          className={INPUT_CLASS + " mt-1"}
+          className="mt-1"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
@@ -648,10 +630,10 @@ function ResourceEditForm({
           <label className={LABEL_CLASS} htmlFor={`edit-url-${resource.id}`}>
             URL
           </label>
-          <input
+          <Input
             id={`edit-url-${resource.id}`}
             type="url"
-            className={INPUT_CLASS + " mt-1"}
+            className="mt-1"
             value={externalUrl}
             onChange={(e) => setExternalUrl(e.target.value)}
           />
@@ -661,9 +643,9 @@ function ResourceEditForm({
           <label className={LABEL_CLASS} htmlFor={`edit-body-${resource.id}`}>
             Note text
           </label>
-          <textarea
+          <Textarea
             id={`edit-body-${resource.id}`}
-            className={INPUT_CLASS + " mt-1 min-h-[100px] resize-y leading-6"}
+            className="mt-1 min-h-[100px]"
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
@@ -674,9 +656,9 @@ function ResourceEditForm({
         <label className={LABEL_CLASS} htmlFor={`edit-description-${resource.id}`}>
           Description <span className="font-semibold normal-case text-ink/65">(optional)</span>
         </label>
-        <textarea
+        <Textarea
           id={`edit-description-${resource.id}`}
-          className={INPUT_CLASS + " mt-1 min-h-[60px] resize-y leading-6"}
+          className="mt-1 min-h-[60px]"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
@@ -686,9 +668,9 @@ function ResourceEditForm({
         <label className={LABEL_CLASS} htmlFor={`edit-category-${resource.id}`}>
           Category
         </label>
-        <select
+        <Select
           id={`edit-category-${resource.id}`}
-          className={SELECT_CLASS + " mt-1"}
+          className="mt-1"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
         >
@@ -698,16 +680,16 @@ function ResourceEditForm({
               {c.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div>
         <label className={LABEL_CLASS} htmlFor={`edit-skill-${resource.id}`}>
           Skill level
         </label>
-        <select
+        <Select
           id={`edit-skill-${resource.id}`}
-          className={SELECT_CLASS + " mt-1"}
+          className="mt-1"
           value={skillLevel}
           onChange={(e) => setSkillLevel(e.target.value as ResourceSkillLevel)}
         >
@@ -716,16 +698,16 @@ function ResourceEditForm({
               {s.label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div>
         <label className={LABEL_CLASS} htmlFor={`edit-session-${resource.id}`}>
           Session type <span className="font-semibold normal-case text-ink/65">(optional)</span>
         </label>
-        <select
+        <Select
           id={`edit-session-${resource.id}`}
-          className={SELECT_CLASS + " mt-1"}
+          className="mt-1"
           value={sessionType}
           onChange={(e) => setSessionType(e.target.value)}
         >
@@ -735,16 +717,16 @@ function ResourceEditForm({
               {t.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div>
         <label className={LABEL_CLASS} htmlFor={`edit-visibility-${resource.id}`}>
           Visibility
         </label>
-        <select
+        <Select
           id={`edit-visibility-${resource.id}`}
-          className={SELECT_CLASS + " mt-1"}
+          className="mt-1"
           value={visibility}
           onChange={(e) => setVisibility(e.target.value as ResourceVisibility)}
         >
@@ -753,32 +735,22 @@ function ResourceEditForm({
               {v.label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {formError ? (
-        <p className="sm:col-span-2 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="sm:col-span-2">
           {formError}
-        </p>
+        </Alert>
       ) : null}
 
       <div className="flex items-center gap-2 sm:col-span-2">
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="focus-ring inline-flex items-center gap-2 rounded bg-ink px-4 py-2.5 font-bold text-white transition hover:bg-clay disabled:opacity-60"
-        >
-          {isSaving ? <Loader2 className="animate-spin" size={16} /> : null}
+        <Button type="submit" variant="primary" loading={isSaving}>
           {isSaving ? "Saving…" : "Save changes"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="focus-ring inline-flex items-center gap-2 rounded border border-ink/12 px-4 py-2.5 font-bold text-ink transition hover:bg-chalk"
-        >
-          <X size={16} />
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel} iconLeft={<X size={16} />}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
