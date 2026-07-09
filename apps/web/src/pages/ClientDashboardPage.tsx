@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CalendarPlus, Clock3, Hourglass, Library, Loader2 } from "lucide-react";
+import { ArrowRight, CalendarPlus, Clock3, Hourglass, Library } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { Alert, Badge, Button, Card, type BadgeVariant } from "@/components/ui";
 import {
   ApiError,
   CANCELLATION_CUTOFF_HOURS,
@@ -38,23 +39,15 @@ const statusCopy: Record<BookingStatus, string> = {
   rescheduled: "Rescheduled"
 };
 
-function statusBadgeClass(status: BookingStatus) {
-  switch (status) {
-    case "confirmed":
-      return "bg-field text-white";
-    case "completed":
-      return "bg-field/15 text-field";
-    case "hold":
-    case "pending":
-      return "bg-ink text-white";
-    case "no_show":
-      return "bg-clay text-white";
-    case "cancelled":
-    case "rescheduled":
-    default:
-      return "bg-chalk text-ink/65";
-  }
-}
+const STATUS_VARIANTS: Record<BookingStatus, BadgeVariant> = {
+  confirmed: "positive-solid",
+  completed: "positive",
+  hold: "primary",
+  pending: "primary",
+  no_show: "destructive",
+  cancelled: "default",
+  rescheduled: "default"
+};
 
 export function ClientDashboardPage() {
   const { profile, user, isEmailVerified } = useAuth();
@@ -110,9 +103,9 @@ export function ClientDashboardPage() {
       </div>
 
       {!isEmailVerified ? (
-        <div className="mt-6 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+        <Alert variant="error" className="mt-6">
           Check your inbox to verify your email before confirming paid sessions or accessing private resources.
-        </div>
+        </Alert>
       ) : null}
 
       {/* Upcoming sessions */}
@@ -124,13 +117,9 @@ export function ClientDashboardPage() {
 
         <div className="mt-5">
           {isLoading ? (
-            <p className="rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
-              Loading your sessions…
-            </p>
+            <Alert variant="info" size="lg">Loading your sessions…</Alert>
           ) : error ? (
-            <p className="rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
-              {error}
-            </p>
+            <Alert variant="error" role="alert">{error}</Alert>
           ) : upcoming.length === 0 ? (
             <EmptyUpcoming />
           ) : (
@@ -152,9 +141,7 @@ export function ClientDashboardPage() {
 
         <div className="mt-5">
           {isLoading ? null : past.length === 0 ? (
-            <p className="rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
-              Past sessions will show here after your first lesson.
-            </p>
+            <Alert variant="info" size="lg">Past sessions will show here after your first lesson.</Alert>
           ) : (
             <ul className="divide-y divide-ink/10 rounded bg-white shadow-soft">
               {past.map((booking) => (
@@ -173,7 +160,7 @@ export function ClientDashboardPage() {
 
 function EmptyUpcoming() {
   return (
-    <div className="rounded bg-white p-6 shadow-soft">
+    <Card padding="lg">
       <h3 className="text-lg font-black">No sessions on the books yet.</h3>
       <p className="mt-2 max-w-xl leading-7 text-ink/68">
         Pick a training focus and a time that works for you. Booking takes a couple of minutes.
@@ -185,7 +172,7 @@ function EmptyUpcoming() {
         Find a slot
         <ArrowRight size={18} />
       </Link>
-    </div>
+    </Card>
   );
 }
 
@@ -230,14 +217,9 @@ function UpcomingCard({ booking, onCancelled }: { booking: BookingSummary; onCan
             {formatTime(booking.starts_at)} – {formatTime(booking.ends_at)}
           </p>
         </div>
-        <span
-          className={[
-            "inline-flex shrink-0 items-center rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-            statusBadgeClass(booking.status)
-          ].join(" ")}
-        >
+        <Badge variant={STATUS_VARIANTS[booking.status]} className="shrink-0">
           {statusCopy[booking.status]}
-        </span>
+        </Badge>
       </div>
 
       {isHold && booking.hold_expires_at ? (
@@ -253,9 +235,9 @@ function UpcomingCard({ booking, onCancelled }: { booking: BookingSummary; onCan
       ) : null}
 
       {cancelError ? (
-        <p className="mt-3 rounded border border-clay/20 bg-clay/5 px-3 py-2 text-xs font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="mt-3">
           {cancelError}
-        </p>
+        </Alert>
       ) : null}
 
       {canCancel ? (
@@ -265,15 +247,9 @@ function UpcomingCard({ booking, onCancelled }: { booking: BookingSummary; onCan
               Within {CANCELLATION_CUTOFF_HOURS}h — contact your coach to cancel.
             </p>
           ) : (
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isCancelling}
-              className="focus-ring inline-flex items-center gap-1.5 rounded border border-clay/25 px-3 py-1.5 text-sm font-bold text-clay transition hover:bg-clay/10 disabled:opacity-50"
-            >
-              {isCancelling ? <Loader2 className="animate-spin" size={14} /> : null}
+            <Button variant="destructive" size="sm" onClick={handleCancel} loading={isCancelling}>
               {isCancelling ? "Cancelling…" : "Cancel session"}
-            </button>
+            </Button>
           )}
         </div>
       ) : null}
@@ -292,14 +268,9 @@ function PastRow({ booking }: { booking: BookingSummary }) {
           {formatLongDate(booking.starts_at)} · {formatTime(booking.starts_at)}
         </p>
       </div>
-      <span
-        className={[
-          "inline-flex shrink-0 items-center rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-          statusBadgeClass(booking.status)
-        ].join(" ")}
-      >
+      <Badge variant={STATUS_VARIANTS[booking.status]} className="shrink-0">
         {statusCopy[booking.status]}
-      </span>
+      </Badge>
     </li>
   );
 }
