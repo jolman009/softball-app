@@ -24,6 +24,7 @@ import {
   type CalendarStatus
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { Alert, Badge, Button, Card, type BadgeVariant } from "@/components/ui";
 
 // --- date helpers (all in local TZ; the coach reads in their own time) ---
 
@@ -83,23 +84,15 @@ const statusCopy: Record<BookingStatus, string> = {
   rescheduled: "Rescheduled"
 };
 
-function statusBadgeClass(status: BookingStatus) {
-  switch (status) {
-    case "confirmed":
-      return "bg-field text-white";
-    case "completed":
-      return "bg-field/15 text-field";
-    case "hold":
-    case "pending":
-      return "bg-ink text-white";
-    case "no_show":
-      return "bg-clay text-white";
-    case "cancelled":
-    case "rescheduled":
-    default:
-      return "bg-chalk text-ink/65";
-  }
-}
+const STATUS_VARIANTS: Record<BookingStatus, BadgeVariant> = {
+  confirmed: "positive-solid",
+  completed: "positive",
+  hold: "primary",
+  pending: "primary",
+  no_show: "destructive",
+  cancelled: "default",
+  rescheduled: "default"
+};
 
 const ON_SCHEDULE: BookingStatus[] = ["hold", "pending", "confirmed", "completed", "rescheduled"];
 const REVENUE_STATUSES: BookingStatus[] = ["confirmed", "completed"];
@@ -359,17 +352,11 @@ export function AdminDashboardPage() {
 
         <div className="mt-5">
           {isLoading ? (
-            <p className="rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
-              Loading the schedule…
-            </p>
+            <Alert variant="info" size="lg">Loading the schedule…</Alert>
           ) : error ? (
-            <p className="rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
-              {error}
-            </p>
+            <Alert variant="error" role="alert">{error}</Alert>
           ) : todaysBookings.length === 0 ? (
-            <p className="rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
-              No sessions today. Enjoy the rest day.
-            </p>
+            <Alert variant="info" size="lg">No sessions today. Enjoy the rest day.</Alert>
           ) : (
             <ul className="divide-y divide-ink/10 rounded bg-white shadow-soft">
               {todaysBookings.map((b) => (
@@ -441,14 +428,14 @@ function MetricCard({
   accent: string;
 }) {
   return (
-    <div className="rounded bg-white p-5 shadow-soft">
+    <Card>
       <div className="flex items-center gap-3">
         <Icon className={accent} size={22} />
         <p className="text-sm font-bold uppercase tracking-[0.14em] text-ink/65">{label}</p>
       </div>
       <p className="mt-3 text-4xl font-black">{value}</p>
       <p className="mt-1 text-sm text-ink/60">{sub}</p>
-    </div>
+    </Card>
   );
 }
 
@@ -465,14 +452,9 @@ function ScheduleRow({ booking }: { booking: AdminBookingRow }) {
           <p className="truncate text-sm text-ink/60">{athlete}</p>
         </div>
       </div>
-      <span
-        className={[
-          "inline-flex shrink-0 items-center rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-          statusBadgeClass(booking.status)
-        ].join(" ")}
-      >
+      <Badge variant={STATUS_VARIANTS[booking.status]} className="shrink-0">
         {statusCopy[booking.status]}
-      </span>
+      </Badge>
     </li>
   );
 }
@@ -501,7 +483,7 @@ function CalendarConnectionCard({
   const calendarName = connected ? status.calendarName : null;
 
   return (
-    <div className="rounded bg-white p-5 shadow-soft">
+    <Card>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <div
@@ -530,54 +512,47 @@ function CalendarConnectionCard({
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           {connected ? (
             <>
-              <button
-                type="button"
-                onClick={onConnect}
-                disabled={isWorking}
-                className="focus-ring inline-flex items-center justify-center gap-2 rounded border border-ink/12 px-4 py-2 text-sm font-bold text-ink transition hover:bg-chalk disabled:cursor-not-allowed disabled:opacity-60"
-              >
+              <Button variant="secondary" onClick={onConnect} disabled={isWorking}>
                 Reconnect
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
                 onClick={onDisconnect}
                 disabled={isWorking}
-                className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-clay disabled:cursor-not-allowed disabled:bg-ink/40"
+                iconLeft={<CalendarX size={16} />}
               >
-                <CalendarX size={16} />
                 Disconnect
-              </button>
+              </Button>
             </>
           ) : (
-            <button
-              type="button"
+            <Button
+              variant="positive"
               onClick={onConnect}
               disabled={isLoading || isWorking}
-              className="focus-ring inline-flex items-center justify-center gap-2 rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-field/40"
+              iconLeft={<Link2 size={16} />}
             >
-              <Link2 size={16} />
               {isWorking ? "Working…" : "Connect Google"}
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       {expiring ? (
-        <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" className="mt-4">
           The access token expires shortly. Bookings still work — reconnect if you start seeing sync errors.
-        </p>
+        </Alert>
       ) : null}
       {notice ? (
-        <p className="mt-4 rounded border border-field/20 bg-field/5 px-4 py-2 text-sm font-semibold text-field">
+        <Alert variant="success" size="sm" role="alert" className="mt-4">
           {notice}
-        </p>
+        </Alert>
       ) : null}
       {error ? (
-        <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="mt-4">
           {error}
-        </p>
+        </Alert>
       ) : null}
-    </div>
+    </Card>
   );
 }
 
