@@ -7,6 +7,7 @@ import {
   type AdminClientListItem,
   type SkillLevel
 } from "@/lib/api";
+import { Alert, Badge, Input, type BadgeVariant } from "@/components/ui";
 
 const SKILL_FILTERS: { value: SkillLevel | "all"; label: string }[] = [
   { value: "all", label: "All levels" },
@@ -21,18 +22,11 @@ function formatError(error: unknown): string {
   return "Something went wrong.";
 }
 
-function skillBadge(level: SkillLevel | null): string {
-  switch (level) {
-    case "advanced":
-      return "bg-field text-white";
-    case "intermediate":
-      return "bg-field/20 text-field";
-    case "beginner":
-      return "bg-chalk text-ink/70";
-    default:
-      return "bg-ink/5 text-ink/65";
-  }
-}
+const SKILL_VARIANTS: Record<SkillLevel, BadgeVariant> = {
+  advanced: "positive-solid",
+  intermediate: "positive",
+  beginner: "default"
+};
 
 export function AdminClientsPage() {
   const [clients, setClients] = useState<AdminClientListItem[]>([]);
@@ -84,19 +78,16 @@ export function AdminClientsPage() {
 
       <section className="mt-10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="relative flex-1">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/40"
-            />
-            <input
+          <div className="flex-1">
+            <Input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search athlete or guardian…"
-              className="focus-ring w-full rounded border border-ink/15 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-ink"
+              leadingIcon={<Search size={16} />}
+              aria-label="Search athlete or guardian"
             />
-          </label>
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {SKILL_FILTERS.map((f) => (
               <button
@@ -115,9 +106,9 @@ export function AdminClientsPage() {
         </div>
 
         {error ? (
-          <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+          <Alert variant="error" size="sm" role="alert" className="mt-4">
             {error}
-          </p>
+          </Alert>
         ) : null}
 
         <div className="mt-6 overflow-hidden rounded bg-white shadow-soft">
@@ -141,14 +132,12 @@ export function AdminClientsPage() {
                     className="focus-ring flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-chalk/60"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span
-                        className={[
-                          "shrink-0 rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-                          skillBadge(c.skill_level)
-                        ].join(" ")}
+                      <Badge
+                        variant={c.skill_level ? SKILL_VARIANTS[c.skill_level] : "info"}
+                        className="shrink-0"
                       >
                         {c.skill_level ?? "—"}
-                      </span>
+                      </Badge>
                       <div className="min-w-0">
                         <p className="truncate font-bold">{c.athlete_name}</p>
                         <p className="truncate text-sm text-ink/65">
