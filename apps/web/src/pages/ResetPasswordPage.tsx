@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { KeyRound } from "lucide-react";
 import { getRoleHomePath, useAuth } from "@/lib/auth";
+import { Alert, Button, FieldWrapper, Input } from "@/components/ui";
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -71,48 +72,48 @@ export function ResetPasswordPage() {
           </div>
         </div>
 
-        <label className="mt-6 block text-sm font-bold" htmlFor="new-password">
-          New password
-        </label>
-        <input
-          id="new-password"
-          className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
-          type="password"
-          value={password}
-          onChange={(event) => {
-            setPassword(event.target.value);
-            setMessage(null);
-          }}
-          minLength={6}
-          autoComplete="new-password"
-          required
-        />
+        <FieldWrapper label="New password" htmlFor="new-password" className="mt-6">
+          <Input
+            id="new-password"
+            inputSize="lg"
+            type="password"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setMessage(null);
+            }}
+            minLength={6}
+            autoComplete="new-password"
+            required
+          />
+        </FieldWrapper>
 
-        <label className="mt-5 block text-sm font-bold" htmlFor="confirm-password">
-          Confirm password
-        </label>
-        <input
-          id="confirm-password"
-          className="focus-ring mt-2 w-full rounded border border-ink/10 px-4 py-3"
-          type="password"
-          value={confirmPassword}
-          onChange={(event) => {
-            setConfirmPassword(event.target.value);
-            setMessage(null);
-          }}
-          minLength={6}
-          autoComplete="new-password"
-          required
-          aria-invalid={passwordsMismatch}
-        />
-        {passwordsMismatch ? (
-          <p className="mt-2 text-sm font-semibold text-clay">Passwords don't match yet.</p>
-        ) : null}
+        <FieldWrapper
+          label="Confirm password"
+          htmlFor="confirm-password"
+          className="mt-5"
+          errorText={passwordsMismatch ? "Passwords don't match yet." : undefined}
+        >
+          <Input
+            id="confirm-password"
+            inputSize="lg"
+            hasError={passwordsMismatch}
+            type="password"
+            value={confirmPassword}
+            onChange={(event) => {
+              setConfirmPassword(event.target.value);
+              setMessage(null);
+            }}
+            minLength={6}
+            autoComplete="new-password"
+            required
+          />
+        </FieldWrapper>
 
         {message ? (
-          <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+          <Alert variant="error" role="alert" className="mt-4">
             {message}
-          </p>
+          </Alert>
         ) : null}
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -122,13 +123,15 @@ export function ResetPasswordPage() {
           >
             Back to sign in
           </Link>
-          <button
+          <Button
             type="submit"
-            className="focus-ring inline-flex items-center justify-center rounded bg-ink px-5 py-3 font-bold text-white transition hover:bg-clay disabled:cursor-not-allowed disabled:bg-ink/40"
-            disabled={isSubmitting || passwordsMismatch}
+            variant="primary"
+            size="lg"
+            loading={isSubmitting}
+            disabled={passwordsMismatch}
           >
             {isSubmitting ? "Updating..." : "Update password"}
-          </button>
+          </Button>
         </div>
       </form>
     </main>
