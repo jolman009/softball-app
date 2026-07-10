@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ScrollText } from "lucide-react";
 import { ApiError, fetchAuditLogs, type AuditAction, type AuditLogRow, type BookingStatus } from "@/lib/api";
+import { Alert, Badge, Button, type BadgeVariant } from "@/components/ui";
 
 const PAGE_SIZE = 100;
 
@@ -27,27 +28,16 @@ const ACTION_COPY: Record<AuditAction, string> = {
   calendar_synced: "Calendar synced"
 };
 
-function actionBadgeClass(action: AuditAction): string {
-  switch (action) {
-    case "created":
-      return "bg-ink text-white";
-    case "confirmed":
-      return "bg-field text-white";
-    case "completed":
-      return "bg-field/15 text-field";
-    case "cancelled":
-      return "bg-clay text-white";
-    case "no_show":
-      return "bg-clay/15 text-clay";
-    case "rescheduled":
-      return "bg-chalk text-ink/70";
-    case "calendar_synced":
-      return "bg-field/10 text-field";
-    case "updated":
-    default:
-      return "bg-ink/10 text-ink/60";
-  }
-}
+const ACTION_VARIANTS: Record<AuditAction, BadgeVariant> = {
+  created: "primary",
+  confirmed: "positive-solid",
+  completed: "positive",
+  cancelled: "destructive",
+  no_show: "destructive-light",
+  rescheduled: "default",
+  calendar_synced: "positive",
+  updated: "info"
+};
 
 function formatError(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -160,9 +150,9 @@ export function AdminAuditLogPage() {
         </div>
 
         {error ? (
-          <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+          <Alert variant="error" size="sm" role="alert" className="mt-4">
             {error}
-          </p>
+          </Alert>
         ) : null}
 
         <div className="mt-6 overflow-hidden rounded bg-white shadow-soft">
@@ -184,14 +174,9 @@ export function AdminAuditLogPage() {
 
         {hasMore && !isLoading ? (
           <div className="mt-4 flex justify-center">
-            <button
-              type="button"
-              onClick={loadMore}
-              disabled={isLoadingMore}
-              className="focus-ring rounded border border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:bg-chalk disabled:opacity-60"
-            >
+            <Button variant="secondary" onClick={loadMore} loading={isLoadingMore}>
               {isLoadingMore ? "Loading…" : "Load more"}
-            </button>
+            </Button>
           </div>
         ) : null}
       </section>
@@ -207,14 +192,9 @@ function AuditRow({ log }: { log: AuditLogRow }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
       <div className="flex min-w-0 items-center gap-3">
-        <span
-          className={[
-            "shrink-0 rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-            actionBadgeClass(log.action)
-          ].join(" ")}
-        >
+        <Badge variant={ACTION_VARIANTS[log.action]} className="shrink-0">
           {ACTION_COPY[log.action]}
-        </span>
+        </Badge>
         <div className="min-w-0">
           <p className="truncate font-bold">
             {trainingLabel}
