@@ -14,6 +14,7 @@ import {
   type SessionNote,
   type SkillLevel
 } from "@/lib/api";
+import { Alert, Badge, Button, Input, Select, Textarea, type BadgeVariant } from "@/components/ui";
 
 const SKILLS: (SkillLevel | "")[] = ["", "beginner", "intermediate", "advanced"];
 
@@ -33,14 +34,14 @@ function formatDateTime(iso: string): string {
   }).format(new Date(iso));
 }
 
-const STATUS_STYLES: Record<BookingStatus, string> = {
-  hold: "bg-amber-100 text-amber-800",
-  pending: "bg-amber-100 text-amber-800",
-  confirmed: "bg-field/15 text-field",
-  completed: "bg-ink text-white",
-  rescheduled: "bg-chalk text-ink/70",
-  cancelled: "bg-clay/15 text-clay",
-  no_show: "bg-clay/15 text-clay"
+const STATUS_VARIANTS: Record<BookingStatus, BadgeVariant> = {
+  hold: "warning",
+  pending: "warning",
+  confirmed: "positive",
+  completed: "primary",
+  rescheduled: "default",
+  cancelled: "destructive-light",
+  no_show: "destructive-light"
 };
 
 export function AdminClientDetailPage() {
@@ -79,9 +80,9 @@ export function AdminClientDetailPage() {
       </Link>
 
       {error ? (
-        <p className="mt-6 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="mt-6">
           {error}
-        </p>
+        </Alert>
       ) : null}
 
       {isLoading ? (
@@ -165,13 +166,9 @@ function ProfileCard({
             Uploads
           </Link>
           {!editing ? (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="focus-ring rounded border border-ink/15 px-3 py-1.5 text-sm font-bold text-ink transition hover:bg-chalk"
-            >
+            <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
               Edit
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -187,9 +184,9 @@ function ProfileCard({
       </div>
 
       {error ? (
-        <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-3 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert" className="mt-4">
           {error}
-        </p>
+        </Alert>
       ) : null}
 
       {!editing ? (
@@ -220,17 +217,16 @@ function ProfileCard({
           />
           <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
             Skill level
-            <select
+            <Select
               value={draft.skill_level ?? ""}
               onChange={(e) => field("skill_level", (e.target.value || null) as SkillLevel | null)}
-              className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-bold text-ink"
             >
               {SKILLS.map((s) => (
                 <option key={s} value={s}>
                   {s === "" ? "—" : s}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <EditField
             label="Primary position"
@@ -276,25 +272,19 @@ function ProfileCard({
           </div>
 
           <div className="flex items-center gap-2 sm:col-span-2">
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={saving}
-              className="focus-ring rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:bg-field/40"
-            >
+            <Button variant="positive" onClick={() => void handleSave()} loading={saving}>
               {saving ? "Saving…" : "Save"}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => {
                 setDraft(client);
                 setEditing(false);
                 setError(null);
               }}
-              className="focus-ring rounded border border-ink/12 px-3 py-2 text-sm font-bold text-ink transition hover:bg-chalk"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -304,15 +294,10 @@ function ProfileCard({
 
 function Flag({ on, onLabel, offLabel }: { on: boolean; onLabel: string; offLabel: string }) {
   return (
-    <span
-      className={[
-        "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-        on ? "bg-field/15 text-field" : "bg-clay/10 text-clay"
-      ].join(" ")}
-    >
+    <Badge variant={on ? "positive" : "destructive-light"} className="gap-1.5">
       {on ? <ShieldCheck size={13} /> : <ShieldAlert size={13} />}
       {on ? onLabel : offLabel}
-    </span>
+    </Badge>
   );
 }
 
@@ -342,19 +327,9 @@ function EditField({
     <label className="flex flex-col gap-1 text-xs font-bold uppercase tracking-wide text-ink/65">
       {label}
       {textarea ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={3}
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-ink"
-        />
+        <Textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} />
       ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="focus-ring rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-ink"
-        />
+        <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
       )}
     </label>
   );
@@ -421,14 +396,9 @@ function BookingRow({ booking }: { booking: AdminClientBooking }) {
         className="focus-ring flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-chalk/60"
       >
         <div className="flex min-w-0 items-center gap-3">
-          <span
-            className={[
-              "shrink-0 rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-              STATUS_STYLES[booking.status]
-            ].join(" ")}
-          >
+          <Badge variant={STATUS_VARIANTS[booking.status]} className="shrink-0">
             {booking.status}
-          </span>
+          </Badge>
           <div className="min-w-0">
             <p className="truncate font-bold">{booking.training_type?.name ?? "Session"}</p>
             <p className="truncate text-sm text-ink/65">{formatDateTime(booking.starts_at)}</p>
@@ -436,9 +406,9 @@ function BookingRow({ booking }: { booking: AdminClientBooking }) {
         </div>
         <div className="flex items-center gap-2">
           {hasNote ? (
-            <span className="rounded bg-field/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-field">
+            <Badge variant="positive" size="sm">
               Note
-            </span>
+            </Badge>
           ) : null}
           <ChevronDown
             size={18}
@@ -551,30 +521,25 @@ function SessionNotesEditor({
       />
 
       {error ? (
-        <p className="rounded border border-clay/20 bg-clay/5 px-3 py-2 text-sm font-semibold text-clay">
+        <Alert variant="error" size="sm" role="alert">
           {error}
-        </p>
+        </Alert>
       ) : null}
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={saving || deleting}
-          className="focus-ring rounded bg-field px-4 py-2 text-sm font-bold text-white transition hover:bg-ink disabled:bg-field/40"
-        >
+        <Button variant="positive" onClick={() => void handleSave()} loading={saving} disabled={deleting}>
           {saving ? "Saving…" : note ? "Update notes" : "Save notes"}
-        </button>
+        </Button>
         {note ? (
-          <button
-            type="button"
+          <Button
+            variant="destructive"
             onClick={() => void handleDelete()}
-            disabled={saving || deleting}
-            className="focus-ring inline-flex items-center gap-1.5 rounded border border-clay/30 px-3 py-2 text-sm font-bold text-clay transition hover:bg-clay/10 disabled:opacity-50"
+            loading={deleting}
+            disabled={saving}
+            iconLeft={<Trash2 size={15} />}
           >
-            <Trash2 size={15} />
             {deleting ? "Deleting…" : "Delete"}
-          </button>
+          </Button>
         ) : null}
         {savedAt ? <span className="text-xs font-semibold text-field">Saved.</span> : null}
       </div>
@@ -597,12 +562,7 @@ function NoteField({
     <label className="flex flex-col gap-1">
       <span className="text-xs font-bold uppercase tracking-wide text-ink/65">{label}</span>
       <span className="text-xs text-ink/65">{hint}</span>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={3}
-        className="focus-ring mt-1 rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-ink"
-      />
+      <Textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className="mt-1" />
     </label>
   );
 }
