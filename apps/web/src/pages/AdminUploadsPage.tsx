@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Film, Video } from "lucide-react";
 import { ApiError, fetchAdminUploads, type ClientUpload, type UploadStatus } from "@/lib/api";
+import { Alert, Badge, type BadgeVariant } from "@/components/ui";
 
 const STATUS_FILTERS: { value: UploadStatus | "all"; label: string }[] = [
   { value: "pending_review", label: "Pending" },
@@ -16,17 +17,11 @@ const STATUS_COPY: Record<UploadStatus, string> = {
   archived: "Archived"
 };
 
-function statusBadgeClass(status: UploadStatus) {
-  switch (status) {
-    case "reviewed":
-      return "bg-field text-white";
-    case "pending_review":
-      return "bg-ink text-white";
-    case "archived":
-    default:
-      return "bg-chalk text-ink/65";
-  }
-}
+const STATUS_VARIANTS: Record<UploadStatus, BadgeVariant> = {
+  reviewed: "positive-solid",
+  pending_review: "primary",
+  archived: "default"
+};
 
 function formatError(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -109,9 +104,9 @@ export function AdminUploadsPage() {
         </div>
 
         {error ? (
-          <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
+          <Alert variant="error" size="sm" role="alert" className="mt-4">
             {error}
-          </p>
+          </Alert>
         ) : null}
 
         <div className="mt-6 overflow-hidden rounded bg-white shadow-soft">
@@ -142,14 +137,9 @@ export function AdminUploadsPage() {
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={[
-                        "inline-flex shrink-0 items-center rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wide",
-                        statusBadgeClass(u.status)
-                      ].join(" ")}
-                    >
+                    <Badge variant={STATUS_VARIANTS[u.status]} className="shrink-0">
                       {STATUS_COPY[u.status]}
-                    </span>
+                    </Badge>
                   </Link>
                 </li>
               ))}
