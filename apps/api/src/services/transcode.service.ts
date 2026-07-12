@@ -6,11 +6,23 @@ import { join } from "node:path";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { UPLOAD_BUCKET } from "./uploads.service.js";
 
-// ffmpeg-static ships a CJS `module.exports = <path string>` but declares an ESM
-// `export default`, which NodeNext mis-types on a plain default import. Resolve
-// it via createRequire so both the type and the runtime value are correct.
 const nodeRequire = createRequire(import.meta.url);
-const ffmpegPath = nodeRequire("ffmpeg-static") as string | null;
+
+/**
+ * Resolves the ffmpeg binary path lazily. `ffmpeg-static` is an OPTIONAL
+ * dependency (its install downloads a binary that could fail), and it also
+ * ships a CJS `module.exports = <path>` under an ESM `export default` that
+ * NodeNext mis-types on a plain import — so we require it here, on demand, and
+ * return null if it isn't installed. This keeps the API booting normally even
+ * when ffmpeg is absent; only the (disabled-by-default) transcode path cares.
+ */
+function resolveFfmpegPath(): string | null {
+  try {
+    return nodeRequire("ffmpeg-static") as string | null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * PROTOTYPE (Phase 7 preview) — transcode a client upload to browser-friendly
@@ -37,8 +49,9 @@ export type TranscodeResult = {
 };
 
 export async function transcodeUploadToH264(uploadId: string): Promise<TranscodeResult> {
+  const ffmpegPath = resolveFfmpegPath();
   if (!ffmpegPath) {
-    throw new Error("ffmpeg binary unavailable (ffmpeg-static did not resolve a path).");
+    throw new Error("ffmpeg binary unavailable (optional dependency ffmpeg-static is not installed).");
   }
 
   // 1. Resolve the source object path.
