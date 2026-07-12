@@ -1,8 +1,11 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { UPLOAD_BUCKET } from "./uploads.service.js";
 
@@ -45,11 +48,12 @@ function h264Path(sourcePath: string): string {
  * SCOPE / LIMITS (deliberate, for a prototype):
  *  - Gated behind `ENABLE_TRANSCODE` and triggered MANUALLY via the admin
  *    endpoint — it is not wired to run automatically on upload.
- *  - Runs ffmpeg synchronously in the API process and buffers the whole file in
- *    memory. Fine for short clips; a 200 MB upload would be slow and memory-heavy
- *    on a small host. Productionizing means moving this off the request path (a
- *    background worker / Storage webhook + queue) and probing to skip clips that
- *    are already H.264. See IMPLEMENTATION_PLAN.md Phase 7.
+ *  - Streams the source to disk (not into memory) and downscales + single-threads
+ *    the encode to stay within a small host's RAM (a 512 MB box OOM-killed the
+ *    process when decoding a 10-bit 2336x1080 HEVC frame at full res). Still runs
+ *    ffmpeg synchronously in the request; productionizing means moving it off the
+ *    request path (a background worker / Storage webhook + queue) and probing to
+ *    skip clips already in H.264. See IMPLEMENTATION_PLAN.md Phase 7.
  */
 
 export type TranscodeResult = {
@@ -73,27 +77,35 @@ export async function transcodeUploadToH264(uploadId: string): Promise<Transcode
   if (error) throw error;
   if (!row) throw new Error("Upload not found");
 
-  // 2. Download the source video.
-  const { data: blob, error: dlError } = await supabaseAdmin.storage
+  // 2. Stream the source object to disk (a signed URL + streamed fetch, NOT
+  //    supabase .download() which buffers the whole Blob in memory — that OOMs a
+  //    small host on large uploads).
+  const { data: signed, error: signError } = await supabaseAdmin.storage
     .from(UPLOAD_BUCKET)
-    .download(row.storage_path);
-  if (dlError || !blob) throw dlError ?? new Error("Failed to download the source video.");
+    .createSignedUrl(row.storage_path, 300);
+  if (signError || !signed?.signedUrl) throw signError ?? new Error("Failed to sign the source video.");
 
   const workdir = await mkdtemp(join(tmpdir(), "sb-transcode-"));
   const inputPath = join(workdir, "input");
   const outputPath = join(workdir, "output.mp4");
   try {
-    await writeFile(inputPath, Buffer.from(await blob.arrayBuffer()));
+    const resp = await fetch(signed.signedUrl);
+    if (!resp.ok || !resp.body) throw new Error(`Failed to download the source video (${resp.status}).`);
+    await pipeline(Readable.fromWeb(resp.body as import("node:stream/web").ReadableStream), createWriteStream(inputPath));
 
-    // 3. Transcode → H.264 (8-bit yuv420p so 10-bit HEVC downconverts to a
-    //    broadly decodable profile) + AAC audio + faststart.
+    // 3. Transcode → H.264 (8-bit yuv420p so 10-bit HEVC downconverts to a broadly
+    //    decodable profile) + AAC + faststart. Downscale to fit within 1280x1280
+    //    and pin to one thread to keep ffmpeg's memory footprint small enough for
+    //    a 512 MB host (full-res 10-bit decode + libx264 was OOM-killing it).
     await runFfmpeg(ffmpegPath, [
       "-y",
       "-i", inputPath,
+      "-vf", "scale=1280:1280:force_original_aspect_ratio=decrease:force_divisible_by=2",
       "-c:v", "libx264",
       "-preset", "veryfast",
       "-crf", "23",
       "-pix_fmt", "yuv420p",
+      "-threads", "1",
       "-c:a", "aac",
       "-b:a", "128k",
       "-movflags", "+faststart",
