@@ -56,7 +56,7 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
-      # Verified-domain sender, e.g. "Softball Training <bookings@yourdomain.com>"
+      # Verified-domain sender, e.g. "On Deck <bookings@yourdomain.com>"
       - key: EMAIL_FROM
         sync: false
       - key: DISPLAY_TIMEZONE

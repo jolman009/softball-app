@@ -10,7 +10,7 @@
 
 ## 2. Email (Resend)
 - [ ] **Verify a sending domain** at resend.com/domains (DNS records added + verified). The `onboarding@resend.dev` test sender only reaches the account owner.
-- [ ] **Set `EMAIL_FROM`** in `apps/api/.env` to an address on the verified domain (e.g. `Softball Training <bookings@yourdomain.com>`).
+- [ ] **Set `EMAIL_FROM`** in `apps/api/.env` to an address on the verified domain (e.g. `On Deck <bookings@yourdomain.com>`).
 - [ ] **Send a real confirm/cancel** to a non-owner address and confirm delivery + formatting.
 - [ ] *(Optional)* Point **Supabase Auth custom SMTP** at Resend (Auth → Email) so confirmation + password-reset emails are on-brand.
 - [ ] Confirm `DISPLAY_TIMEZONE` (or the coach's availability-window timezone) renders session times correctly.

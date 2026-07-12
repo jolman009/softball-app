@@ -242,8 +242,8 @@ function renderHtml(p: TemplateParts): string {
   <body style="margin:0;background:#f5f5f4;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2937;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
       <tr>
-        <td style="background:#1f2937;padding:20px 24px;">
-          <span style="color:#ffffff;font-weight:800;font-size:16px;">Softball Training</span>
+        <td style="background:#16191f;padding:20px 24px;">
+          <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#2f6f4e;border:2px solid #f6f2e8;margin-right:9px;vertical-align:-1px;"></span><span style="color:#ffffff;font-weight:800;font-size:16px;">On Deck</span>
         </td>
       </tr>
       <tr>

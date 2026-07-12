@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { CalendarDays, LogOut, Shield, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { Logo } from "@/components/Logo";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   [
@@ -21,9 +22,8 @@ export function AppLayout() {
       </a>
       <header className="border-b border-ink/10 bg-chalk/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-4">
-          <Link to="/" className="focus-ring rounded text-base font-black tracking-normal text-ink sm:text-lg">
-            <span className="sm:hidden">Softball</span>
-            <span className="hidden sm:inline">Softball Training</span>
+          <Link to="/" className="focus-ring rounded text-base sm:text-lg" aria-label="On Deck — home">
+            <Logo markSize={28} />
           </Link>
           <nav className="flex items-center gap-0.5 sm:gap-1">
             <NavLink to="/booking" className={navLinkClass}>
