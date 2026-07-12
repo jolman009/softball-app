@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { KeyRound, LogIn, Mail, RotateCcw, UserPlus } from "lucide-react";
 import { GoogleIcon } from "@/components/GoogleIcon";
+import { LogoMark } from "@/components/Logo";
 import { getRoleHomePath, useAuth } from "@/lib/auth";
 import { Alert, Button, FieldWrapper, Input } from "@/components/ui";
 
@@ -99,11 +100,14 @@ export function LoginPage() {
   return (
     <main className="mx-auto grid max-w-6xl gap-10 px-4 py-12 lg:grid-cols-[0.82fr_1.18fr]">
       <section>
-        <p className="text-sm font-bold uppercase tracking-[0.18em] text-field">Account access</p>
+        <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] text-field">
+          <LogoMark size={22} />
+          On Deck · Account access
+        </p>
         <h1 className="mt-3 text-4xl font-black">Sign in, create an account, or reset your password.</h1>
         <p className="mt-4 text-lg leading-8 text-ink/70">
-          Supabase Auth protects client and admin sessions. The app loads your database profile after sign-in and sends
-          you to the right dashboard for your role.
+          Your sessions, notes, and training resources live behind a secure sign-in. After you sign in,
+          On Deck sends you straight to the right dashboard for your role.
         </p>
         <div className="mt-8 rounded bg-ink p-5 text-white shadow-soft">
           <div className="flex items-center gap-3">

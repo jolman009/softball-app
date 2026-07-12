@@ -1,6 +1,6 @@
-# Softball Training Booking Platform
+# On Deck — Softball Training Booking Platform
 
-A custom booking and client portal for a softball training business: part scheduling system, part admin dashboard, part training resource hub.
+**On Deck** is a custom booking and client portal for a softball training business: part scheduling system, part admin dashboard, part training resource hub. The name comes from the on-deck circle — every client is up next for their session.
 
 The core architectural decision is that the application database is the source of truth for bookings, while Google Calendar acts as an external availability mirror. This protects against double-booking while still keeping the coach's calendar in sync.
 

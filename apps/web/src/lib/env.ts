@@ -1,5 +1,5 @@
 const requiredEnv = {
-  appName: import.meta.env.VITE_APP_NAME ?? "Softball Training",
+  appName: import.meta.env.VITE_APP_NAME ?? "On Deck",
   supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
   supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api"

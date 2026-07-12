@@ -22,5 +22,5 @@ const app = createApp();
 const port = env.PORT ?? env.API_PORT;
 
 app.listen(port, () => {
-  console.log(`Softball training API listening on port ${port}`);
+  console.log(`On Deck API listening on port ${port}`);
 });

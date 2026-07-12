@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, CalendarCheck, ShieldCheck } from "lucide-react";
+import { LogoMark } from "@/components/Logo";
 
 export function LandingPage() {
   return (
@@ -8,14 +9,16 @@ export function LandingPage() {
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(47,111,78,0.95),rgba(22,25,31,0.74)),url('https://images.unsplash.com/photo-1529768167801-9173d94c2a42?auto=format&fit=crop&w=1800&q=80')] bg-cover bg-center" />
         <div className="relative mx-auto flex min-h-[calc(100svh-73px)] max-w-6xl items-center px-4 py-20">
           <div className="max-w-2xl">
-            <p className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-white/75">
-              Softball Training
+            <p className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] text-white/75">
+              <LogoMark size={22} />
+              On Deck · Softball Training
             </p>
             <h1 className="text-5xl font-black tracking-normal sm:text-7xl">
-              Book sharp, focused reps with a coach who knows the calendar.
+              You&rsquo;re on deck.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-white/82">
-              A polished booking and client portal for private lessons, athlete notes, and training resources.
+              Book sharp, focused reps with a coach who knows the calendar — private lessons, athlete
+              notes, and training resources in one place.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -40,7 +43,8 @@ export function LandingPage() {
         <div>
           <h2 className="text-3xl font-black">Built around real availability.</h2>
           <p className="mt-4 text-lg leading-8 text-ink/72">
-            The app treats the database as the booking source of truth and mirrors confirmed sessions to Google Calendar.
+            Every slot you see is genuinely open — On Deck reads the coach&rsquo;s real schedule, and
+            confirmed sessions sync straight to Google Calendar.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">

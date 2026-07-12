@@ -36,7 +36,7 @@ const envSchema = z.object({
   // production; `onboarding@resend.dev` works out of the box but only delivers
   // to the Resend account owner's address.
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().default("Softball Training <onboarding@resend.dev>"),
+  EMAIL_FROM: z.string().default("On Deck <onboarding@resend.dev>"),
   // IANA timezone used to render session times in outbound emails. The coach's
   // availability-window timezone takes precedence when one exists; this is the
   // fallback.

@@ -82,7 +82,7 @@ you choose, record it at the top of `IMPLEMENTATION_PLAN.md` §5.5.3.
 ## 4. Resend verified domain (carried over from Phase 5)
 1. resend.com/domains → add + verify your sending domain (DNS records).
 2. Set `EMAIL_FROM` on Render to an address on that domain, e.g.
-   `Softball Training <bookings@yourdomain.com>`. The default `onboarding@resend.dev`
+   `On Deck <bookings@yourdomain.com>`. The default `onboarding@resend.dev`
    only delivers to the Resend account owner.
 
 ---

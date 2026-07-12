@@ -5,7 +5,14 @@ metadata:
   type: project
 ---
 
-# Softball-app Design System (established 2026-06-09)
+# On Deck Design System (established 2026-06-09; named 2026-07-12)
+
+## Brand identity
+
+- **Name: On Deck** — from the on-deck circle; every client is up next for their session. Wordmark renders as "On Deck" (non-breaking space), `font-black tracking-tight`.
+- **Logo**: `apps/web/src/components/Logo.tsx`. `LogoMark` = field-green softball with chalk seams/stitches (the on-deck circle). `Logo` = mark + wordmark, `tone="dark|light"` for light/dark surfaces. Favicon: `apps/web/public/favicon.svg` (same mark).
+- Eyebrow pattern with brand: `<LogoMark size={22} /> On Deck · {context}` inside the standard eyebrow classes.
+- Email header: ink (#16191f) bar, green ball dot with chalk ring, "On Deck" in white 800-weight (see `email.service.ts` renderHtml).
 
 ## Brand palette (tailwind.config.ts + index.css custom properties)
 
