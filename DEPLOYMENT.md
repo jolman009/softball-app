@@ -32,10 +32,21 @@ you choose, record it at the top of `IMPLEMENTATION_PLAN.md` §5.5.3.
    - `GOOGLE_OAUTH_REDIRECT_URI` → `https://<your-render-subdomain>.onrender.com/api/calendar/google/callback`
    - `RESEND_API_KEY`, `EMAIL_FROM` (verified-domain sender — see §4)
    - `SENTRY_DSN`
-   - `WEB_ORIGIN` → leave as a placeholder for now; set it in §2 once the Vercel
-     domain exists, then redeploy.
+   - `WEB_ORIGIN` → set to the Vercel production origin
+     `https://softball-app-one.vercel.app` (no trailing slash). ⚠️ Do NOT leave
+     this blank or use a non-URL placeholder — `config/env.ts` validates it with
+     `z.string().url()` and the API **crashes at boot** on an invalid value.
+     Update it later if you attach a custom domain, then redeploy.
    - (`NODE_ENV=production`, `TRUST_PROXY=1`, `DISPLAY_TIMEZONE`,
      `SENTRY_TRACES_SAMPLE_RATE=0` are already baked into `render.yaml`.)
+
+   > **Build note:** `render.yaml`'s build command is
+   > `npm ci --include=dev && npm run build -w @softball/api`. The `--include=dev`
+   > is required because `NODE_ENV=production` makes `npm ci` skip devDependencies,
+   > but the TypeScript build needs them (`typescript`, `@types/*`). Without it the
+   > build fails with `TS7016: Could not find a declaration file for module 'express'`.
+   > If you created the service before this fix, update the Build Command in the
+   > Render dashboard (Settings → Build & Deploy) to match, or re-sync the blueprint.
 3. Deploy. Confirm `GET https://<render-url>/api/health` returns
    `{ "ok": true, ... }`. (The API binds Render's injected `PORT` automatically.)
 
