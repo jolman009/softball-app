@@ -61,7 +61,9 @@ adminUploadsRouter.get("/:id", async (req, res, next) => {
     if (!data) return res.status(404).json({ error: "Upload not found" });
 
     const [upload] = await withPlaybackUrls([data as unknown as UploadRow]);
-    res.json({ upload });
+    // Surface whether the transcode prototype is available so the review UI can
+    // conditionally show the "Convert to H.264" action.
+    res.json({ upload, transcodeEnabled: env.ENABLE_TRANSCODE });
   } catch (error) {
     next(error);
   }

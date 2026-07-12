@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
 import {
   ApiError,
   deleteAdminUpload,
   fetchAdminUpload,
+  transcodeAdminUpload,
   updateAdminUpload,
   type ClientUpload,
   type UploadStatus
@@ -42,6 +43,9 @@ export function AdminUploadReviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isTranscoding, setIsTranscoding] = useState(false);
+  const [transcodeEnabled, setTranscodeEnabled] = useState(false);
+  const [transcodeMsg, setTranscodeMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -50,11 +54,12 @@ export function AdminUploadReviewPage() {
     let isMounted = true;
     setIsLoading(true);
     fetchAdminUpload(id)
-      .then((data) => {
+      .then(({ upload: data, transcodeEnabled: canTranscode }) => {
         if (!isMounted) return;
         setUpload(data);
         setSummary(data.coach_summary ?? "");
         setStatus(data.status);
+        setTranscodeEnabled(canTranscode);
       })
       .catch((err: unknown) => {
         if (isMounted) setError(formatError(err));
@@ -98,6 +103,24 @@ export function AdminUploadReviewPage() {
     } catch (err) {
       setIsDeleting(false);
       setError(formatError(err));
+    }
+  }
+
+  async function handleTranscode() {
+    if (!id) return;
+    setIsTranscoding(true);
+    setTranscodeMsg(null);
+    setError(null);
+    try {
+      const updated = await transcodeAdminUpload(id);
+      // The re-encoded file returns a fresh signed URL, so swapping in the
+      // updated upload reloads the player with the now-playable H.264 video.
+      setUpload(updated);
+      setTranscodeMsg("Converted to H.264 — the video should play inline now.");
+    } catch (err) {
+      setError(formatError(err));
+    } finally {
+      setIsTranscoding(false);
     }
   }
 
@@ -147,15 +170,38 @@ export function AdminUploadReviewPage() {
                 {/* Fallback: some phone/screen-recorder MP4s aren't web-optimized (moov
                     atom at the end), so the inline player can show a black frame. The
                     browser's native tab player downloads-then-plays them reliably. */}
-                <a
-                  href={upload.playback_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="focus-ring mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-field hover:underline"
-                >
-                  Open video in a new tab
-                  <ExternalLink size={14} />
-                </a>
+                <div className="mt-2 flex flex-wrap items-center gap-4">
+                  <a
+                    href={upload.playback_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="focus-ring inline-flex items-center gap-1.5 text-sm font-bold text-field hover:underline"
+                  >
+                    Open video in a new tab
+                    <ExternalLink size={14} />
+                  </a>
+                  {transcodeEnabled ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleTranscode}
+                      loading={isTranscoding}
+                      iconLeft={<RefreshCw size={14} />}
+                    >
+                      {isTranscoding ? "Converting…" : "Convert to H.264"}
+                    </Button>
+                  ) : null}
+                </div>
+                {isTranscoding ? (
+                  <Alert variant="info" size="sm" className="mt-2">
+                    Converting to H.264 — this can take up to a minute for longer clips. Keep this tab open.
+                  </Alert>
+                ) : transcodeMsg ? (
+                  <Alert variant="success" size="sm" role="alert" className="mt-2">
+                    {transcodeMsg}
+                  </Alert>
+                ) : null}
               </>
             ) : (
               <Alert variant="error">

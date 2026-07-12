@@ -823,8 +823,26 @@ export async function fetchAdminUploads(query?: {
   return data.uploads;
 }
 
-export async function fetchAdminUpload(id: string): Promise<ClientUpload> {
-  const data = await apiFetch<{ upload: ClientUpload }>(`/admin/uploads/${id}`, { auth: true });
+export async function fetchAdminUpload(
+  id: string
+): Promise<{ upload: ClientUpload; transcodeEnabled: boolean }> {
+  const data = await apiFetch<{ upload: ClientUpload; transcodeEnabled?: boolean }>(
+    `/admin/uploads/${id}`,
+    { auth: true }
+  );
+  return { upload: data.upload, transcodeEnabled: data.transcodeEnabled ?? false };
+}
+
+/**
+ * PROTOTYPE (Phase 7): transcode an upload to browser-friendly H.264 + faststart
+ * in place. Only available when the API has ENABLE_TRANSCODE set (else 503).
+ * Synchronous on the server, so this request can take a while for longer clips.
+ */
+export async function transcodeAdminUpload(id: string): Promise<ClientUpload> {
+  const data = await apiFetch<{ upload: ClientUpload }>(`/admin/uploads/${id}/transcode`, {
+    method: "POST",
+    auth: true
+  });
   return data.upload;
 }
 
