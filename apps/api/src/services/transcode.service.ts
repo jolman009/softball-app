@@ -16,7 +16,7 @@ const nodeRequire = createRequire(import.meta.url);
  * return null if it isn't installed. This keeps the API booting normally even
  * when ffmpeg is absent; only the (disabled-by-default) transcode path cares.
  */
-function resolveFfmpegPath(): string | null {
+export function resolveFfmpegPath(): string | null {
   try {
     return nodeRequire("ffmpeg-static") as string | null;
   } catch {
@@ -24,9 +24,19 @@ function resolveFfmpegPath(): string | null {
   }
 }
 
+/** Builds the H.264 output object path from the source path (keeps the user prefix). */
+function h264Path(sourcePath: string): string {
+  const slash = sourcePath.lastIndexOf("/");
+  const dir = slash >= 0 ? sourcePath.slice(0, slash + 1) : "";
+  const name = slash >= 0 ? sourcePath.slice(slash + 1) : sourcePath;
+  const dot = name.lastIndexOf(".");
+  const stem = (dot > 0 ? name.slice(0, dot) : name).replace(/-h264$/, "");
+  return `${dir}${stem}-h264.mp4`;
+}
+
 /**
  * PROTOTYPE (Phase 7 preview) — transcode a client upload to browser-friendly
- * H.264 + faststart, in place.
+ * H.264 + faststart, writing the result to a NEW storage path.
  *
  * WHY: client clips are often HEVC/H.265 (iPhone "High Efficiency"), which
  * Chrome/Firefox can't decode → a black frame on the review page. H.264 plays
@@ -90,21 +100,36 @@ export async function transcodeUploadToH264(uploadId: string): Promise<Transcode
       outputPath
     ]);
 
-    // 4. Re-upload in place (same storage_path, so existing rows/links resolve).
+    // 4. Upload to a NEW path (never overwrite in place). Overwriting the same
+    //    object lets Supabase's path-keyed CDN keep serving the old (HEVC) bytes
+    //    even under a fresh signed-URL token; a new path guarantees a new cache
+    //    key. Short cacheControl as belt-and-suspenders.
     const output = await readFile(outputPath);
+    const newPath = h264Path(row.storage_path);
     const { error: upError } = await supabaseAdmin.storage
       .from(UPLOAD_BUCKET)
-      .upload(row.storage_path, output, { contentType: "video/mp4", upsert: true });
+      .upload(newPath, output, { contentType: "video/mp4", cacheControl: "60", upsert: true });
     if (upError) throw upError;
 
-    // 5. Reflect the new format/size on the row.
+    // 5. Repoint the row at the new object + reflect the new format/size.
     const { error: updateError } = await supabaseAdmin
       .from("client_uploads")
-      .update({ mime_type: "video/mp4", bytes: output.byteLength })
+      .update({ storage_path: newPath, mime_type: "video/mp4", bytes: output.byteLength })
       .eq("id", uploadId);
     if (updateError) throw updateError;
 
-    return { storage_path: row.storage_path, bytes: output.byteLength, mime_type: "video/mp4" };
+    // 6. Best-effort: remove the original object now that the row points at the
+    //    new one (skip if the source somehow already used the target path).
+    if (row.storage_path !== newPath) {
+      const { error: removeError } = await supabaseAdmin.storage
+        .from(UPLOAD_BUCKET)
+        .remove([row.storage_path]);
+      if (removeError) {
+        console.warn(`[transcode] failed to remove old object ${row.storage_path}:`, removeError.message);
+      }
+    }
+
+    return { storage_path: newPath, bytes: output.byteLength, mime_type: "video/mp4" };
   } finally {
     await rm(workdir, { recursive: true, force: true });
   }

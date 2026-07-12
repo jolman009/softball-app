@@ -46,12 +46,13 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
   SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0),
   // PROTOTYPE flag (Phase 7 preview): enables the in-process HEVC->H.264
-  // transcode endpoint. Off unless explicitly "true"/"1". NOTE: z.coerce.boolean
-  // would treat the string "false" as true, so parse the truthy values by hand.
+  // transcode endpoint. Off by default. Accepts true/1/yes/on (case-insensitive)
+  // so a "True"/"TRUE" dashboard value doesn't silently read as false. NOTE:
+  // z.coerce.boolean would treat the string "false" as true, hence the manual parse.
   ENABLE_TRANSCODE: z
     .string()
     .optional()
-    .transform((value) => value === "true" || value === "1")
+    .transform((value) => ["true", "1", "yes", "on"].includes((value ?? "").trim().toLowerCase()))
 });
 
 export const env = envSchema.parse(process.env);

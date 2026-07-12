@@ -159,6 +159,7 @@ export function AdminUploadReviewPage() {
             {upload.playback_url ? (
               <>
                 <video
+                  key={upload.playback_url ?? upload.id}
                   controls
                   playsInline
                   preload="metadata"
