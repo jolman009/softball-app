@@ -15,3 +15,7 @@ coverage/
 
 # Playwright MCP scratch artifacts (snapshots, console logs)
 .playwright-mcp/
+
+# Verification screenshots dropped in the repo root (throwaway artifacts).
+# Scoped to root so real image assets under apps/*/ (icons, splash) stay tracked.
+/*.png
