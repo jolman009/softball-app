@@ -102,7 +102,7 @@ export function AdminUploadReviewPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
+    <main className="mx-auto max-w-4xl px-4 py-12">
       <Link
         to="/admin/uploads"
         className="focus-ring inline-flex w-fit items-center gap-1.5 text-sm font-bold text-ink/65 hover:text-ink"
@@ -134,7 +134,13 @@ export function AdminUploadReviewPage() {
 
           <div className="mt-6">
             {upload.playback_url ? (
-              <video controls className="w-full rounded bg-black shadow-soft" src={upload.playback_url}>
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                className="h-[65vh] w-full rounded bg-black object-contain shadow-soft"
+                src={upload.playback_url}
+              >
                 Your browser does not support the video tag.
               </video>
             ) : (

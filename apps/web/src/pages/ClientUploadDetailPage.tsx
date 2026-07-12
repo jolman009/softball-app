@@ -89,7 +89,13 @@ export function ClientUploadDetailPage() {
 
           <div className="mt-6">
             {upload.playback_url ? (
-              <video controls className="w-full rounded bg-black shadow-soft" src={upload.playback_url}>
+              <video
+                controls
+                playsInline
+                preload="metadata"
+                className="h-[65vh] w-full rounded bg-black object-contain shadow-soft"
+                src={upload.playback_url}
+              >
                 Your browser does not support the video tag.
               </video>
             ) : (
