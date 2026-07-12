@@ -189,7 +189,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: options?.redirectTo ?? `${window.location.origin}/dashboard`
+          // Default returns to /login, whose effect routes by role (admin → /admin,
+          // client → /dashboard). Callers that need a specific landing pass redirectTo.
+          redirectTo: options?.redirectTo ?? `${window.location.origin}/login`
         }
       });
 

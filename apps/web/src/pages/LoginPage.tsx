@@ -82,10 +82,12 @@ export function LoginPage() {
     setMessage(null);
     setIsSubmitting(true);
     try {
-      // After Google returns the user to /dashboard, ProtectedRoute will redirect admins
-      // to /admin if needed. We don't have the profile until after the OAuth round-trip.
+      // The role isn't known until after the OAuth round-trip, so we can't pick
+      // /admin vs /dashboard here. If the user was headed somewhere specific
+      // (returnPath), send them straight back there; otherwise return to /login,
+      // whose effect below routes by role via getRoleHomePath once the profile loads.
       await signInWithGoogle({
-        redirectTo: `${window.location.origin}${returnPath ?? "/dashboard"}`
+        redirectTo: `${window.location.origin}${returnPath ?? "/login"}`
       });
     } catch (error) {
       setMessageType("error");
