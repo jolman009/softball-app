@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
+import { env } from "../config/env.js";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { authenticate, requireRole } from "../middleware/auth.js";
 import { UPLOAD_BUCKET, UPLOAD_SELECT, withPlaybackUrls, type UploadRow } from "../services/uploads.service.js";
+import { transcodeUploadToH264 } from "../services/transcode.service.js";
 
 export const adminUploadsRouter = Router();
 
@@ -97,6 +99,40 @@ adminUploadsRouter.patch("/:id", async (req, res, next) => {
       .select(UPLOAD_SELECT)
       .maybeSingle();
 
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: "Upload not found" });
+
+    const [upload] = await withPlaybackUrls([data as unknown as UploadRow]);
+    res.json({ upload });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PROTOTYPE (Phase 7 preview) — transcode an upload to browser-friendly H.264 +
+ * faststart in place, for clips that won't play inline (typically HEVC). Gated
+ * behind `ENABLE_TRANSCODE`; runs ffmpeg synchronously so the request blocks
+ * until it finishes. See `transcode.service.ts`.
+ */
+adminUploadsRouter.post("/:id/transcode", async (req, res, next) => {
+  try {
+    const params = idParamsSchema.parse(req.params);
+
+    if (!env.ENABLE_TRANSCODE) {
+      return res.status(503).json({
+        error: "Transcoding is disabled. Set ENABLE_TRANSCODE=true on the API host to enable this prototype."
+      });
+    }
+
+    await transcodeUploadToH264(params.id);
+
+    // Return the refreshed upload with a fresh signed playback URL.
+    const { data, error } = await supabaseAdmin
+      .from("client_uploads")
+      .select(UPLOAD_SELECT)
+      .eq("id", params.id)
+      .maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ error: "Upload not found" });
 

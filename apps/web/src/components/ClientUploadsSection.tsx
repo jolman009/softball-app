@@ -45,6 +45,34 @@ function statusBadgeClass(status: UploadStatus) {
 const ACCEPT = UPLOAD_ALLOWED_MIME.join(",");
 
 /**
+ * Best-effort client-side HEVC (H.265) sniff. HEVC-in-MP4 reports MIME
+ * `video/mp4` like H.264, but Chrome/Firefox can't decode it (esp. 10-bit),
+ * so it plays as a black screen. We scan the head + tail of the file for the
+ * HEVC sample-entry fourccs `hvc1`/`hev1` (the `moov` box lives at one end or
+ * the other). This is advisory only — a rare false positive just shows a soft
+ * warning the user can ignore. The definitive check is server-side (ffprobe).
+ */
+async function looksLikeHevc(file: File): Promise<boolean> {
+  try {
+    const CHUNK = 2 * 1024 * 1024; // 2 MB from each end
+    const decoder = new TextDecoder("latin1");
+    const hasMarker = (buf: ArrayBuffer) => {
+      const text = decoder.decode(new Uint8Array(buf));
+      return text.includes("hvc1") || text.includes("hev1");
+    };
+    const head = await file.slice(0, Math.min(CHUNK, file.size)).arrayBuffer();
+    if (hasMarker(head)) return true;
+    if (file.size > CHUNK) {
+      const tail = await file.slice(Math.max(0, file.size - CHUNK)).arrayBuffer();
+      if (hasMarker(tail)) return true;
+    }
+    return false;
+  } catch {
+    return false; // never block an upload on a sniff failure
+  }
+}
+
+/**
  * Phase 4.5 client upload widget + "My uploads" list. Drops on the client
  * dashboard. `bookings` feeds the optional "attach to a lesson" dropdown.
  */
@@ -149,10 +177,12 @@ function UploadForm({
   const [bookingId, setBookingId] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [codecWarning, setCodecWarning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function pickFile(next: File | null) {
     setFormError(null);
+    setCodecWarning(false);
     if (!next) {
       setFile(null);
       return;
@@ -173,6 +203,9 @@ function UploadForm({
       const dot = next.name.lastIndexOf(".");
       setTitle(dot > 0 ? next.name.slice(0, dot) : next.name);
     }
+    // Advisory: warn (don't block) if the clip looks like HEVC — it won't play
+    // inline in Chrome/Firefox. Runs async so it never delays the picker.
+    void looksLikeHevc(next).then(setCodecWarning);
   }
 
   function reset() {
@@ -180,6 +213,7 @@ function UploadForm({
     setTitle("");
     setDescription("");
     setBookingId("");
+    setCodecWarning(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -230,6 +264,19 @@ function UploadForm({
           onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
         />
       </label>
+
+      <p className="mt-2 text-xs leading-5 text-ink/55">
+        For best playback, record or export in <span className="font-bold">H.264</span> — on iPhone:
+        Settings → Camera → Formats → “Most Compatible”. High-Efficiency (HEVC) clips may show a black
+        screen in some browsers.
+      </p>
+
+      {codecWarning ? (
+        <p className="mt-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+          This looks like an HEVC / High-Efficiency video, which may not play in the browser. You can still
+          upload it, but re-exporting as H.264 (“Most Compatible”) gives the most reliable playback.
+        </p>
+      ) : null}
 
       <div className="mt-4">
         <label className="block text-xs font-bold uppercase tracking-wide text-ink/65" htmlFor="upload-title">

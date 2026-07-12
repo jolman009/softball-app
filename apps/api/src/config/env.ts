@@ -44,7 +44,14 @@ const envSchema = z.object({
   // Error monitoring (Sentry). When SENTRY_DSN is unset, Sentry is never
   // initialized and all hooks are no-ops.
   SENTRY_DSN: z.string().optional(),
-  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0)
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0),
+  // PROTOTYPE flag (Phase 7 preview): enables the in-process HEVC->H.264
+  // transcode endpoint. Off unless explicitly "true"/"1". NOTE: z.coerce.boolean
+  // would treat the string "false" as true, so parse the truthy values by hand.
+  ENABLE_TRANSCODE: z
+    .string()
+    .optional()
+    .transform((value) => value === "true" || value === "1")
 });
 
 export const env = envSchema.parse(process.env);

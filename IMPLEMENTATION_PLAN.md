@@ -235,6 +235,7 @@ Legend: ✅ done · 🟡 partial · 🔴 not started
 - [ ] Referral codes.
 - [ ] Membership tier table + access rules for resources.
 - [ ] AI-assisted swing-analysis notes layered on top of Phase 4.5 uploads.
+- [ ] **Video transcoding pipeline** — normalize client uploads to browser-friendly **H.264 + faststart**. Client clips are frequently **HEVC/H.265** (iPhone "High Efficiency"), which Chrome/Firefox can't decode → black frame on the review page (diagnosed 2026-07-12 via `ffprobe` on a real upload: `hevc`, Main 10, 10-bit). *Mitigations already shipped 2026-07-12:* client-side HEVC sniff + "record in H.264 / Most Compatible" guidance in the upload widget (`ClientUploadsSection.tsx`), and an "Open in new tab" fallback on the review/detail players (helps non-faststart H.264, not HEVC). *Prototype landed 2026-07-12:* `apps/api/src/services/transcode.service.ts` (ffmpeg via `ffmpeg-static`) + admin trigger `POST /api/admin/uploads/:id/transcode`, **env-gated behind `ENABLE_TRANSCODE`** and run manually. **Productionizing** = run it automatically after upload off the request path (a Render background worker or a Supabase Storage webhook + queue), handle the 200 MB / long-running cases, and probe-then-skip clips already in H.264.
 
 ---
 
