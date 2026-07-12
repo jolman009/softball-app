@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Clock3 } from "lucide-react";
 import { fetchMyUpload, type ClientUpload, type UploadStatus } from "@/lib/api";
+import { Alert, Badge, Card, type BadgeVariant } from "@/components/ui";
 
 function formatDate(iso: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -18,17 +19,11 @@ const STATUS_COPY: Record<UploadStatus, string> = {
   archived: "Archived"
 };
 
-function statusBadgeClass(status: UploadStatus) {
-  switch (status) {
-    case "reviewed":
-      return "bg-field text-white";
-    case "pending_review":
-      return "bg-ink text-white";
-    case "archived":
-    default:
-      return "bg-chalk text-ink/65";
-  }
-}
+const STATUS_VARIANTS: Record<UploadStatus, BadgeVariant> = {
+  reviewed: "positive-solid",
+  pending_review: "primary",
+  archived: "default"
+};
 
 export function ClientUploadDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -66,13 +61,9 @@ export function ClientUploadDetailPage() {
       </Link>
 
       {isLoading ? (
-        <p className="mt-8 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
-          Loading…
-        </p>
+        <Alert variant="info" size="lg" className="mt-8">Loading…</Alert>
       ) : error ? (
-        <p className="mt-8 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
-          {error}
-        </p>
+        <Alert variant="error" role="alert" className="mt-8">{error}</Alert>
       ) : !upload ? null : (
         <article className="mt-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -83,16 +74,11 @@ export function ClientUploadDetailPage() {
                 {upload.booking?.training_type ? ` · ${upload.booking.training_type.name} lesson` : ""}
               </p>
             </div>
-            <span
-              className={[
-                "inline-flex shrink-0 items-center gap-1.5 rounded px-3 py-1.5 text-xs font-bold uppercase tracking-wide",
-                statusBadgeClass(upload.status)
-              ].join(" ")}
-            >
+            <Badge variant={STATUS_VARIANTS[upload.status]} className="shrink-0 gap-1.5 px-3 py-1.5">
               {upload.status === "reviewed" ? <CheckCircle2 size={14} /> : null}
               {upload.status === "pending_review" ? <Clock3 size={14} /> : null}
               {STATUS_COPY[upload.status]}
-            </span>
+            </Badge>
           </div>
 
           {upload.description ? (
@@ -107,22 +93,20 @@ export function ClientUploadDetailPage() {
                 Your browser does not support the video tag.
               </video>
             ) : (
-              <p className="rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
-                This video is temporarily unavailable. Please try again in a moment.
-              </p>
+              <Alert variant="error">This video is temporarily unavailable. Please try again in a moment.</Alert>
             )}
           </div>
 
           <div className="mt-8">
             <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-field">Coach feedback</h2>
             {upload.coach_summary ? (
-              <div className="mt-3 whitespace-pre-wrap rounded bg-white p-6 leading-7 text-ink/80 shadow-soft">
+              <Card padding="lg" className="mt-3 whitespace-pre-wrap leading-7 text-ink/80">
                 {upload.coach_summary}
-              </div>
+              </Card>
             ) : (
-              <p className="mt-3 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
+              <Alert variant="info" size="lg" className="mt-3">
                 Your coach hasn't left feedback yet. You'll see it here once they've reviewed the clip.
-              </p>
+              </Alert>
             )}
           </div>
         </article>

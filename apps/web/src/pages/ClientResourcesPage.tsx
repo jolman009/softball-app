@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, FileText, Film, ImageIcon, LinkIcon, Library } from "lucide-react";
 import { fetchResources, type Resource, type ResourceType } from "@/lib/api";
+import { Alert } from "@/components/ui";
 
 function typeIcon(type: ResourceType) {
   switch (type) {
@@ -83,13 +84,9 @@ export function ClientResourcesPage() {
 
       <section className="mt-10">
         {isLoading ? (
-          <p className="rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
-            Loading resources…
-          </p>
+          <Alert variant="info" size="lg">Loading resources…</Alert>
         ) : error ? (
-          <p className="rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
-            {error}
-          </p>
+          <Alert variant="error" role="alert">{error}</Alert>
         ) : resources.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded bg-white px-4 py-12 text-center shadow-soft">
             <Library className="text-ink/30" />

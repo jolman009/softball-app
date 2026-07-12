@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { fetchResource, type Resource } from "@/lib/api";
+import { Alert, Card } from "@/components/ui";
 
 export function ResourceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -39,13 +40,9 @@ export function ResourceDetailPage() {
       </Link>
 
       {isLoading ? (
-        <p className="mt-8 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
-          Loading…
-        </p>
+        <Alert variant="info" size="lg" className="mt-8">Loading…</Alert>
       ) : error ? (
-        <p className="mt-8 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
-          {error}
-        </p>
+        <Alert variant="error" role="alert" className="mt-8">{error}</Alert>
       ) : !resource ? null : (
         <article className="mt-6">
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-field">
@@ -121,9 +118,9 @@ function ResourceBody({ resource }: { resource: Resource }) {
 
     case "text":
       return (
-        <div className="whitespace-pre-wrap rounded bg-white p-6 leading-7 text-ink/80 shadow-soft">
+        <Card padding="lg" className="whitespace-pre-wrap leading-7 text-ink/80">
           {resource.body}
-        </div>
+        </Card>
       );
 
     default:
@@ -133,8 +130,6 @@ function ResourceBody({ resource }: { resource: Resource }) {
 
 function Unavailable() {
   return (
-    <p className="rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
-      This file is temporarily unavailable. Please try again in a moment.
-    </p>
+    <Alert variant="error">This file is temporarily unavailable. Please try again in a moment.</Alert>
   );
 }

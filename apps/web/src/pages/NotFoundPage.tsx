@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, CalendarClock, Compass } from "lucide-react";
+import { Card } from "@/components/ui";
 
 export function NotFoundPage() {
   return (
@@ -11,7 +12,7 @@ export function NotFoundPage() {
           The link may be old, mistyped, or pointing at something we haven't built yet. Pick a spot below and we'll get
           you back on track.
         </p>
-        <div className="mt-8 rounded bg-ink p-5 text-white shadow-soft">
+        <Card variant="dark" className="mt-8">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded bg-white/12">
               <Compass size={22} />
@@ -21,7 +22,7 @@ export function NotFoundPage() {
               <p className="text-sm text-white/70">Most things start from the landing page or the booking flow.</p>
             </div>
           </div>
-        </div>
+        </Card>
       </section>
 
       <section className="rounded bg-white p-5 shadow-soft sm:p-6">

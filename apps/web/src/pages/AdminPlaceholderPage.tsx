@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Construction } from "lucide-react";
+import { Card } from "@/components/ui";
 
 export type AdminPlaceholderProps = {
   title: string;
@@ -18,12 +19,12 @@ export function AdminPlaceholderPage({ title, phase, description }: AdminPlaceho
       <h1 className="mt-3 text-4xl font-black">{title}</h1>
       <p className="mt-4 max-w-xl leading-7 text-ink/68">{description}</p>
 
-      <div className="mt-8 flex items-center gap-3 rounded bg-white p-5 shadow-soft">
+      <Card className="mt-8 flex items-center gap-3">
         <Construction className="text-field" size={28} />
         <p className="text-sm font-semibold text-ink/70">
           This page is a placeholder. The full implementation lands in {phase}.
         </p>
-      </div>
+      </Card>
 
       <Link
         to="/admin"

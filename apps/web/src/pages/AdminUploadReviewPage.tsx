@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import {
   ApiError,
   deleteAdminUpload,
@@ -9,6 +9,7 @@ import {
   type ClientUpload,
   type UploadStatus
 } from "@/lib/api";
+import { Alert, Button, Card, Select, Textarea } from "@/components/ui";
 
 const STATUS_OPTIONS: { value: UploadStatus; label: string }[] = [
   { value: "pending_review", label: "Pending review" },
@@ -111,13 +112,9 @@ export function AdminUploadReviewPage() {
       </Link>
 
       {isLoading ? (
-        <p className="mt-8 rounded border border-dashed border-ink/20 bg-chalk px-4 py-5 text-sm font-semibold text-ink/62">
-          Loading…
-        </p>
+        <Alert variant="info" size="lg" className="mt-8">Loading…</Alert>
       ) : !upload ? (
-        <p className="mt-8 rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
-          {error ?? "Upload not found."}
-        </p>
+        <Alert variant="error" role="alert" className="mt-8">{error ?? "Upload not found."}</Alert>
       ) : (
         <article className="mt-6">
           <h1 className="text-4xl font-black">{upload.title}</h1>
@@ -141,13 +138,13 @@ export function AdminUploadReviewPage() {
                 Your browser does not support the video tag.
               </video>
             ) : (
-              <p className="rounded border border-clay/20 bg-clay/5 px-4 py-3 text-sm font-semibold text-clay">
+              <Alert variant="error">
                 This video is temporarily unavailable (it may still be uploading). Try again in a moment.
-              </p>
+              </Alert>
             )}
           </div>
 
-          <div className="mt-8 rounded bg-white p-6 shadow-soft">
+          <Card padding="lg" className="mt-8">
             <h2 className="text-2xl font-black">Your feedback</h2>
 
             <label
@@ -156,9 +153,9 @@ export function AdminUploadReviewPage() {
             >
               Summary <span className="font-semibold normal-case text-ink/65">(the athlete sees this)</span>
             </label>
-            <textarea
+            <Textarea
               id="review-summary"
-              className="focus-ring mt-1 min-h-[140px] w-full resize-y rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold leading-6 text-ink"
+              className="mt-1 min-h-[140px] resize-y leading-6"
               value={summary}
               onChange={(e) => {
                 setSummary(e.target.value);
@@ -173,54 +170,49 @@ export function AdminUploadReviewPage() {
             >
               Status
             </label>
-            <select
-              id="review-status"
-              className="focus-ring mt-1 w-full rounded border border-ink/15 bg-white px-3 py-2 text-sm font-semibold text-ink sm:w-60"
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value as UploadStatus);
-                setSaved(false);
-              }}
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1 sm:w-60">
+              <Select
+                id="review-status"
+                value={status}
+                onChange={(e) => {
+                  setStatus(e.target.value as UploadStatus);
+                  setSaved(false);
+                }}
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
 
             {error ? (
-              <p className="mt-4 rounded border border-clay/20 bg-clay/5 px-4 py-2 text-sm font-semibold text-clay">
-                {error}
-              </p>
+              <Alert variant="error" size="sm" role="alert" className="mt-4">{error}</Alert>
             ) : null}
             {saved ? (
-              <p className="mt-4 rounded border border-field/20 bg-field/5 px-4 py-2 text-sm font-semibold text-field">
+              <Alert variant="success" size="sm" role="alert" className="mt-4">
                 Saved. The athlete can see your feedback now.
-              </p>
+              </Alert>
             ) : null}
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="focus-ring inline-flex items-center gap-2 rounded bg-ink px-5 py-3 font-bold text-white transition hover:bg-clay disabled:opacity-60"
-              >
-                {isSaving ? <Loader2 className="animate-spin" size={18} /> : null}
+              <Button type="button" size="lg" onClick={handleSave} loading={isSaving}>
                 {isSaving ? "Saving…" : "Save feedback"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="destructive"
+                size="lg"
+                className="ml-auto"
                 onClick={handleDelete}
-                disabled={isDeleting}
-                className="focus-ring ml-auto inline-flex items-center gap-2 rounded border border-clay/20 px-4 py-3 font-bold text-clay transition hover:bg-clay/10 disabled:opacity-50"
+                loading={isDeleting}
+                iconLeft={<Trash2 size={16} />}
               >
-                {isDeleting ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
                 Delete
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </article>
       )}
     </main>
