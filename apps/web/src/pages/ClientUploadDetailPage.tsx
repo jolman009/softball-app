@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Clock3 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, ExternalLink } from "lucide-react";
 import { fetchMyUpload, type ClientUpload, type UploadStatus } from "@/lib/api";
 import { Alert, Badge, Card, type BadgeVariant } from "@/components/ui";
 
@@ -89,15 +89,28 @@ export function ClientUploadDetailPage() {
 
           <div className="mt-6">
             {upload.playback_url ? (
-              <video
-                controls
-                playsInline
-                preload="metadata"
-                className="h-[65vh] w-full rounded bg-black object-contain shadow-soft"
-                src={upload.playback_url}
-              >
-                Your browser does not support the video tag.
-              </video>
+              <>
+                <video
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="h-[65vh] w-full rounded bg-black object-contain shadow-soft"
+                  src={upload.playback_url}
+                >
+                  Your browser does not support the video tag.
+                </video>
+                {/* Fallback for non-faststart MP4s (moov atom at end) that the inline
+                    player renders as a black frame — the native tab player handles them. */}
+                <a
+                  href={upload.playback_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="focus-ring mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-field hover:underline"
+                >
+                  Open video in a new tab
+                  <ExternalLink size={14} />
+                </a>
+              </>
             ) : (
               <Alert variant="error">This video is temporarily unavailable. Please try again in a moment.</Alert>
             )}

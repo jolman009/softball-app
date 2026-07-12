@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Trash2 } from "lucide-react";
 import {
   ApiError,
   deleteAdminUpload,
@@ -134,15 +134,29 @@ export function AdminUploadReviewPage() {
 
           <div className="mt-6">
             {upload.playback_url ? (
-              <video
-                controls
-                playsInline
-                preload="metadata"
-                className="h-[65vh] w-full rounded bg-black object-contain shadow-soft"
-                src={upload.playback_url}
-              >
-                Your browser does not support the video tag.
-              </video>
+              <>
+                <video
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="h-[65vh] w-full rounded bg-black object-contain shadow-soft"
+                  src={upload.playback_url}
+                >
+                  Your browser does not support the video tag.
+                </video>
+                {/* Fallback: some phone/screen-recorder MP4s aren't web-optimized (moov
+                    atom at the end), so the inline player can show a black frame. The
+                    browser's native tab player downloads-then-plays them reliably. */}
+                <a
+                  href={upload.playback_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="focus-ring mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-field hover:underline"
+                >
+                  Open video in a new tab
+                  <ExternalLink size={14} />
+                </a>
+              </>
             ) : (
               <Alert variant="error">
                 This video is temporarily unavailable (it may still be uploading). Try again in a moment.
